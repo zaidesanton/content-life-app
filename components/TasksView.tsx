@@ -66,7 +66,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
       <h1 className="text-[20px] font-semibold text-white mb-1">
         {VIEW_LABELS[view]}
       </h1>
-      <p className="text-[12px] text-[#333] mb-5">
+      <p suppressHydrationWarning className="text-[12px] text-[#666] mb-5">
         {view === 'today' ? todayLabel() : view === 'this_week' ? weekLabel() : 'Next week'}
       </p>
 
@@ -121,8 +121,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
           onClick={() => setView('next_week')}
           className="w-full flex items-center justify-between px-3.5 py-2.5 bg-[#0d0d0d] border border-[#141414] rounded-lg mt-2 text-left"
         >
-          <span className="text-[12px] text-[#333]">Next Week</span>
-          <span className="text-[12px] text-[#2a2a2a]">{nextWeekCount} tasks ›</span>
+          <span className="text-[12px] text-[#666]">Next Week</span>
+          <span className="text-[12px] text-[#555]">{nextWeekCount} tasks ›</span>
         </button>
       )}
     </div>
@@ -133,7 +133,7 @@ function Bucket({ title, tasks, onToggle }: { title: string; tasks: Task[]; onTo
   if (tasks.length === 0) return null
   return (
     <div className="mb-6">
-      <p className="text-[10px] font-semibold text-[#2a2a2a] uppercase tracking-[.08em] mb-2.5">{title}</p>
+      <p className="text-[10px] font-semibold text-[#555] uppercase tracking-[.08em] mb-2.5">{title}</p>
       <div className="divide-y divide-[#0f0f0f]">
         {tasks.map(task => (
           <div key={task.id} className="flex items-center gap-2.5 py-1.5">

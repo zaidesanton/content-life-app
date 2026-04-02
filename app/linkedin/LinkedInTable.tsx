@@ -120,8 +120,8 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
     return (
       <th
         onClick={() => toggleSort(colKey)}
-        className={`px-3 py-2 text-[10px] font-medium uppercase tracking-wider cursor-pointer select-none whitespace-nowrap text-right ${
-          active ? 'text-[#aaa]' : 'text-[#2e2e2e] hover:text-[#666]'
+        className={`px-2 py-2 text-[10px] font-medium uppercase tracking-wider cursor-pointer select-none whitespace-nowrap text-right w-[68px] ${
+          active ? 'text-[#aaa]' : 'text-[#555] hover:text-[#999]'
         }`}
       >
         {label}{active ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
@@ -135,7 +135,7 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
       <div className="px-6 pt-5 pb-3 border-b border-[#111]">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-[16px] font-semibold text-white">LinkedIn Posts</h1>
-          <span className="text-xs text-[#333]">{visible.length} / {posts.length}</span>
+          <span className="text-xs text-[#666]">{visible.length} / {posts.length}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <input
@@ -155,7 +155,7 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
             className={`px-3 py-1 rounded-md text-[11px] border transition-colors ${
               showDupes
                 ? 'bg-[#141414] border-[#252525] text-[#777]'
-                : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#333]'
+                : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666]'
             }`}
           >Show dupes</button>
           <button
@@ -163,18 +163,18 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
             className={`px-3 py-1 rounded-md text-[11px] border transition-colors ${
               showSunset
                 ? 'bg-[#141414] border-[#252525] text-[#777]'
-                : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#333]'
+                : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666]'
             }`}
           >Show sunset</button>
         </div>
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
-        <table className="w-full border-collapse">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <table className="w-full border-collapse table-fixed">
           <thead className="sticky top-0 bg-[#0a0a0a] z-10">
             <tr className="border-b border-[#111]">
-              <th className="px-3 py-2 text-[10px] font-medium uppercase tracking-wider text-[#2e2e2e] text-left w-[40%]">Hook</th>
+              <th className="px-3 py-2 text-[10px] font-medium uppercase tracking-wider text-[#555] text-left">Hook</th>
               {sortCols.map(c => <SortTh key={c.key} colKey={c.key} label={c.label} />)}
               <th className="w-8" />
             </tr>
@@ -202,9 +202,9 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
                       isOpen ? 'bg-[#0d0d0d]' : isSunset ? 'opacity-40 hover:bg-[#0d0d0d]' : 'hover:bg-[#0d0d0d]'
                     }`}
                   >
-                    <td className="px-3 py-[9px]">
+                    <td className="px-3 py-[9px] max-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-[12px] text-[#bbb] truncate max-w-[280px] md:max-w-none">
+                        <span className="text-[12px] text-[#bbb] truncate">
                           {post.hook}
                         </span>
                         {dupeCount > 0 && (
