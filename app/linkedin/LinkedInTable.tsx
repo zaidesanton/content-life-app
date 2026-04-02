@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useMemo } from 'react'
+import { useState, useTransition, useMemo, Fragment } from 'react'
 import type { PostRow } from './page'
 import { saveHookScore, toggleSunset, fetchPostContent } from './actions'
 
@@ -195,9 +195,8 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
               const alts = post.hook_alternatives
 
               return (
-                <>
+                <Fragment key={post.id}>
                   <tr
-                    key={post.id}
                     onClick={() => handleRowClick(post.id)}
                     className={`cursor-pointer border-b border-[#0d0d0d] transition-colors ${
                       isOpen ? 'bg-[#0d0d0d]' : isSunset ? 'opacity-40 hover:bg-[#0d0d0d]' : 'hover:bg-[#0d0d0d]'
@@ -300,7 +299,7 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               )
             })}
           </tbody>
