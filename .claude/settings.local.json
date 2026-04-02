@@ -22,7 +22,14 @@
       "Bash(python3 -c \"import zipfile; z = zipfile.ZipFile\\(''C:/Users/Taranis/Documents/Projects/Managar Dev/Repos/Content+Life App/The_Art_and_Business_of_Online_Writing_How_to_Beat_the_Game_of_Capturing_and_Keeping_Attention_Nicolas_Cole_Cole_Nicolas.epub''\\); print\\(''\\\\n''.join\\(z.namelist\\(\\)\\)\\)\")",
       "Bash(python3:*)",
       "Bash(grep -v \"^[0-9]*:$\")",
-      "Bash(awk -F: 'NR>=80 && NR<=200 {print}')"
+      "Bash(awk -F: 'NR>=80 && NR<=200 {print}')",
+      "mcp__73053cd9-14de-45c5-be99-f5e60645cf70__list_tables",
+      "Bash(\"C:/Users/Taranis/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/brainstorming/scripts/start-server.sh\" --project-dir \"C:/Users/Taranis/Documents/Projects/Managar Dev/Repos/Content+Life App\")",
+      "Bash(xargs cat:*)",
+      "Bash(\"C:/Users/Taranis/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/brainstorming/scripts/start-server.sh\" --project-dir \"C:/Users/Taranis/Documents/Projects/Managar Dev/Repos/Content+Life App\" --port 3333)",
+      "Bash(curl -s http://localhost:56108/ --max-time 3 -o /dev/null -w \"%{http_code}\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s http://localhost:54036/ -o /dev/null -w \"%{http_code}\")"
     ]
   }
 }

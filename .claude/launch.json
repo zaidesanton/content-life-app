@@ -1,0 +1,18 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "brainstorm",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-p", "56108", ".superpowers/brainstorm/1327-1775129843/content"],
+      "port": 56108
+    },
+    {
+      "name": "dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000,
+      "autoPort": true
+    }
+  ]
+}

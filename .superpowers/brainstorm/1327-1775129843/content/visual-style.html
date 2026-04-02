@@ -1,0 +1,111 @@
+<h2>Visual Style</h2>
+<p class="subtitle">Pick the overall feel. Content and functionality are the same — this is purely about aesthetic.</p>
+
+<div class="cards" style="grid-template-columns: repeat(3, 1fr);">
+
+  <!-- Option A: Dark minimal -->
+  <div class="card" data-choice="dark-minimal" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0a0a0a; padding:0; border-radius:8px; overflow:hidden; font-family:system-ui;">
+      <div style="display:flex; height:240px;">
+        <!-- Sidebar -->
+        <div style="width:48px; background:#111; border-right:1px solid #1f1f1f; padding:16px 8px; display:flex; flex-direction:column; gap:16px; align-items:center;">
+          <div style="width:8px; height:8px; background:#fff; border-radius:50%; margin-bottom:8px;"></div>
+          <div style="width:28px; height:28px; background:#fff; border-radius:8px; opacity:1;"></div>
+          <div style="width:28px; height:28px; background:#2a2a2a; border-radius:8px;"></div>
+          <div style="width:28px; height:28px; background:#2a2a2a; border-radius:8px;"></div>
+          <div style="width:28px; height:28px; background:#2a2a2a; border-radius:8px;"></div>
+        </div>
+        <!-- Content -->
+        <div style="flex:1; padding:20px 16px; background:#0a0a0a;">
+          <div style="color:#fff; font-size:14px; font-weight:600; margin-bottom:16px;">Tasks</div>
+          <div style="background:#161616; border-radius:8px; padding:10px; margin-bottom:8px; border:1px solid #1f1f1f;">
+            <div style="height:10px; background:#2a2a2a; border-radius:4px; width:80%; margin-bottom:6px;"></div>
+            <div style="height:8px; background:#222; border-radius:4px; width:55%;"></div>
+          </div>
+          <div style="background:#161616; border-radius:8px; padding:10px; margin-bottom:8px; border:1px solid #1f1f1f;">
+            <div style="height:10px; background:#2a2a2a; border-radius:4px; width:65%; margin-bottom:6px;"></div>
+            <div style="height:8px; background:#222; border-radius:4px; width:40%;"></div>
+          </div>
+          <div style="background:#161616; border-radius:8px; padding:10px; border:1px solid #1f1f1f; opacity:0.5;">
+            <div style="height:10px; background:#2a2a2a; border-radius:4px; width:75%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Dark & Minimal</h3>
+      <p>Pure black, white text, no color accents. Like the current app. Clean, zero distraction. Feels like a dev tool.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Dark with blue accent -->
+  <div class="card" data-choice="dark-accent" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0d1117; padding:0; border-radius:8px; overflow:hidden; font-family:system-ui;">
+      <div style="display:flex; height:240px;">
+        <!-- Sidebar -->
+        <div style="width:48px; background:#0d1117; border-right:1px solid #21262d; padding:16px 8px; display:flex; flex-direction:column; gap:16px; align-items:center;">
+          <div style="width:8px; height:8px; background:#58a6ff; border-radius:50%; margin-bottom:8px;"></div>
+          <div style="width:28px; height:28px; background:#1f6feb; border-radius:8px; box-shadow: 0 0 12px #1f6feb55;"></div>
+          <div style="width:28px; height:28px; background:#21262d; border-radius:8px;"></div>
+          <div style="width:28px; height:28px; background:#21262d; border-radius:8px;"></div>
+          <div style="width:28px; height:28px; background:#21262d; border-radius:8px;"></div>
+        </div>
+        <!-- Content -->
+        <div style="flex:1; padding:20px 16px; background:#0d1117;">
+          <div style="color:#e6edf3; font-size:14px; font-weight:600; margin-bottom:16px;">Tasks</div>
+          <div style="background:#161b22; border-radius:8px; padding:10px; margin-bottom:8px; border:1px solid #30363d;">
+            <div style="height:10px; background:#21262d; border-radius:4px; width:80%; margin-bottom:6px;"></div>
+            <div style="height:8px; background:#58a6ff33; border-radius:4px; width:55%;"></div>
+          </div>
+          <div style="background:#161b22; border-radius:8px; padding:10px; margin-bottom:8px; border:1px solid #30363d;">
+            <div style="height:10px; background:#21262d; border-radius:4px; width:65%; margin-bottom:6px;"></div>
+            <div style="height:6px; background:#238636; border-radius:4px; width:40%;"></div>
+          </div>
+          <div style="background:#161b22; border-radius:8px; padding:10px; border:1px solid #30363d; opacity:0.5;">
+            <div style="height:10px; background:#21262d; border-radius:4px; width:75%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Dark + Color Accents</h3>
+      <p>GitHub-style dark. Blue/green accents for status and actions. More visual hierarchy, still focused. Feels like a modern SaaS tool.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Light clean -->
+  <div class="card" data-choice="light-clean" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#f9fafb; padding:0; border-radius:8px; overflow:hidden; font-family:system-ui; border:1px solid #e5e7eb;">
+      <div style="display:flex; height:240px;">
+        <!-- Sidebar -->
+        <div style="width:48px; background:#f3f4f6; border-right:1px solid #e5e7eb; padding:16px 8px; display:flex; flex-direction:column; gap:16px; align-items:center;">
+          <div style="width:8px; height:8px; background:#111; border-radius:50%; margin-bottom:8px;"></div>
+          <div style="width:28px; height:28px; background:#111; border-radius:8px;"></div>
+          <div style="width:28px; height:28px; background:#e5e7eb; border-radius:8px;"></div>
+          <div style="width:28px; height:28px; background:#e5e7eb; border-radius:8px;"></div>
+          <div style="width:28px; height:28px; background:#e5e7eb; border-radius:8px;"></div>
+        </div>
+        <!-- Content -->
+        <div style="flex:1; padding:20px 16px; background:#fff;">
+          <div style="color:#111; font-size:14px; font-weight:600; margin-bottom:16px;">Tasks</div>
+          <div style="background:#f9fafb; border-radius:8px; padding:10px; margin-bottom:8px; border:1px solid #e5e7eb;">
+            <div style="height:10px; background:#e5e7eb; border-radius:4px; width:80%; margin-bottom:6px;"></div>
+            <div style="height:8px; background:#f3f4f6; border-radius:4px; width:55%;"></div>
+          </div>
+          <div style="background:#f9fafb; border-radius:8px; padding:10px; margin-bottom:8px; border:1px solid #e5e7eb;">
+            <div style="height:10px; background:#e5e7eb; border-radius:4px; width:65%; margin-bottom:6px;"></div>
+            <div style="height:6px; background:#d1fae5; border-radius:4px; width:40%;"></div>
+          </div>
+          <div style="background:#f9fafb; border-radius:8px; padding:10px; border:1px solid #e5e7eb; opacity:0.5;">
+            <div style="height:10px; background:#e5e7eb; border-radius:4px; width:75%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Light & Clean</h3>
+      <p>White background, subtle grays. Linear/Notion-style. Easier to read in daylight. Feels more like a document tool than a dev tool.</p>
+    </div>
+  </div>
+
+</div>

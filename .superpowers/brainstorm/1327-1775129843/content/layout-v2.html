@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Layout v2</title>
+<script src="/helper.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #111; color: #aaa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 24px; }
+  h2 { color: #fff; font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .subtitle { color: #555; font-size: 13px; margin-bottom: 20px; }
+
+  .switcher { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .sw { padding: 5px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; border: 1px solid #222; background: #111; color: #555; }
+  .sw.active { background: #1c1c1c; color: #ddd; border-color: #2a2a2a; }
+
+  .frame { border: 1px solid #1e1e1e; border-radius: 10px; overflow: hidden; }
+
+  .app { display: flex; height: 520px; background: #0a0a0a; }
+
+  /* Sidebar */
+  .sidebar { width: 180px; border-right: 1px solid #141414; display: flex; flex-direction: column; padding: 28px 0; flex-shrink: 0; }
+  .app-name { font-size: 13px; font-weight: 600; color: #fff; padding: 0 20px 24px; letter-spacing: -.01em; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 20px; font-size: 13px; color: #444; cursor: pointer; transition: color .1s; }
+  .nav-item:hover { color: #888; }
+  .nav-item.active { color: #fff; }
+  .nav-item .icon { font-size: 14px; width: 16px; text-align: center; }
+  .nav-item .label { flex: 1; }
+
+  /* Content area */
+  .content { flex: 1; overflow-y: auto; min-width: 0; }
+
+  /* ── TASKS ── */
+  .tasks { padding: 32px 28px; }
+  .view-title { font-size: 20px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .view-sub { font-size: 12px; color: #333; margin-bottom: 20px; }
+
+  .toggle { display: inline-flex; background: #111; border: 1px solid #1a1a1a; border-radius: 6px; margin-bottom: 24px; }
+  .toggle-btn { padding: 5px 14px; font-size: 12px; color: #444; cursor: pointer; border-radius: 5px; }
+  .toggle-btn.on { background: #1e1e1e; color: #ccc; }
+
+  .add-row { display: flex; gap: 8px; margin-bottom: 28px; }
+  .add-row input { flex: 1; background: #111; border: 1px solid #1a1a1a; border-radius: 7px; padding: 9px 12px; font-size: 13px; color: #ccc; outline: none; }
+  .add-row input::placeholder { color: #2e2e2e; }
+  .add-row button { background: #1e1e1e; border: 1px solid #2a2a2a; color: #ccc; border-radius: 7px; padding: 9px 14px; font-size: 12px; cursor: pointer; white-space: nowrap; }
+
+  .bucket { margin-bottom: 24px; }
+  .bucket-title { font-size: 10px; font-weight: 600; color: #2a2a2a; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
+  .task-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid #0f0f0f; }
+  .task-row:last-child { border-bottom: none; }
+  .cb { width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid #222; flex-shrink: 0; }
+  .cb.done { border-color: #222; background: #1a1a1a; display: flex; align-items: center; justify-content: center; }
+  .cb.done::after { content: '✓'; font-size: 8px; color: #3a3a3a; }
+  .task-label { font-size: 13px; color: #bbb; flex: 1; }
+  .task-label.done { color: #2e2e2e; text-decoration: line-through; }
+  .tag { font-size: 10px; color: #2e2e2e; padding: 2px 7px; border: 1px solid #1a1a1a; border-radius: 99px; }
+
+  .next-week-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #0d0d0d; border: 1px solid #141414; border-radius: 7px; cursor: pointer; margin-top: 4px; }
+  .nw-label { font-size: 12px; color: #333; }
+  .nw-count { font-size: 12px; color: #2a2a2a; }
+
+  /* ── LINKEDIN ── */
+  .linkedin { display: flex; flex-direction: column; height: 100%; }
+  .li-top { padding: 20px 24px 14px; border-bottom: 1px solid #111; }
+  .li-top-row { display: flex; align-items: center; justify-content: space-between; }
+  .li-title { font-size: 16px; font-weight: 600; color: #fff; }
+  .filters { display: flex; gap: 6px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+  .f-date { font-size: 11px; padding: 4px 8px; background: #0f0f0f; border: 1px solid #1a1a1a; border-radius: 5px; color: #444; width: 86px; }
+  .f-chip { font-size: 11px; padding: 4px 10px; background: #0f0f0f; border: 1px solid #1a1a1a; border-radius: 5px; color: #444; cursor: pointer; }
+  .f-chip.on { background: #141414; color: #777; border-color: #252525; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th { padding: 8px 10px; font-size: 10px; color: #2e2e2e; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid #111; text-align: left; white-space: nowrap; cursor: pointer; user-select: none; }
+  thead th:hover { color: #555; }
+  tbody td { padding: 9px 10px; font-size: 12px; color: #666; border-bottom: 1px solid #0d0d0d; white-space: nowrap; }
+  tbody td.hook-col { color: #bbb; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
+  tbody tr:hover td { background: #0d0d0d; }
+  .score-val { font-weight: 700; }
+  .s9, .s8 { color: #6ee7b7; }
+  .s7, .s6 { color: #fde68a; }
+  .s5, .s4 { color: #fca5a5; }
+  .sunset-btn { background: none; border: none; cursor: pointer; font-size: 13px; padding: 3px 5px; border-radius: 4px; color: #2a2a2a; transition: color .15s; }
+  .sunset-btn:hover { color: #888; }
+  .dup { font-size: 9px; background: #0f1e32; color: #3b7dd8; padding: 1px 5px; border-radius: 99px; margin-left: 4px; vertical-align: middle; }
+
+  /* placeholder */
+  .placeholder-tab { display: flex; align-items: center; justify-content: center; height: 100%; color: #222; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<h2>Layout v2</h2>
+<p class="subtitle">Simple side nav · Click to preview each tab</p>
+
+<div class="switcher">
+  <div class="sw active" onclick="show('tasks-today', this)">Tasks — Today</div>
+  <div class="sw" onclick="show('tasks-week', this)">Tasks — Week</div>
+  <div class="sw" onclick="show('linkedin', this)">LinkedIn</div>
+  <div class="sw" onclick="show('newsletter', this)">Newsletter</div>
+  <div class="sw" onclick="show('capture', this)">Capture</div>
+</div>
+
+<div class="frame">
+<div class="app">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="app-name">Content + Life</div>
+    <div class="nav-item active" id="nav-tasks" onclick="show('tasks-today', null)">
+      <span class="icon">✓</span><span class="label">Tasks</span>
+    </div>
+    <div class="nav-item" id="nav-newsletter" onclick="show('newsletter', null)">
+      <span class="icon">✉</span><span class="label">Newsletter</span>
+    </div>
+    <div class="nav-item" id="nav-linkedin" onclick="show('linkedin', null)">
+      <span class="icon">in</span><span class="label">LinkedIn</span>
+    </div>
+    <div class="nav-item" id="nav-capture" onclick="show('capture', null)">
+      <span class="icon">⚡</span><span class="label">Capture</span>
+    </div>
+  </div>
+
+  <!-- Tasks today -->
+  <div class="content" id="pane-tasks-today">
+    <div class="tasks">
+      <div class="view-title">Today</div>
+      <div class="view-sub">Wednesday, 2 April</div>
+      <div class="toggle">
+        <div class="toggle-btn on">Today</div>
+        <div class="toggle-btn">This Week</div>
+        <div class="toggle-btn">Next Week</div>
+      </div>
+      <div class="add-row">
+        <input placeholder="Add a task…">
+        <button>+ Add</button>
+      </div>
+      <div class="bucket">
+        <div class="bucket-title">Must Do</div>
+        <div class="task-row"><div class="cb done"></div><span class="task-label done">Write LinkedIn post — AI in engineering</span><span class="tag">LinkedIn</span></div>
+        <div class="task-row"><div class="cb"></div><span class="task-label">Finish newsletter draft #14</span><span class="tag">Newsletter</span></div>
+        <div class="task-row"><div class="cb"></div><span class="task-label">Review Q2 team goals doc</span><span class="tag">Work</span></div>
+      </div>
+      <div class="bucket">
+        <div class="bucket-title">Nice to Have</div>
+        <div class="task-row"><div class="cb"></div><span class="task-label">Order standing desk mat</span><span class="tag">Home</span></div>
+        <div class="task-row"><div class="cb"></div><span class="task-label">Score more 2023 hook posts</span><span class="tag">LinkedIn</span></div>
+      </div>
+      <div class="next-week-row">
+        <span class="nw-label">Next Week</span>
+        <span class="nw-count">4 tasks ›</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tasks week -->
+  <div class="content" id="pane-tasks-week" style="display:none">
+    <div class="tasks">
+      <div class="view-title">This Week</div>
+      <div class="view-sub">31 Mar – 6 Apr</div>
+      <div class="toggle">
+        <div class="toggle-btn">Today</div>
+        <div class="toggle-btn on">This Week</div>
+        <div class="toggle-btn">Next Week</div>
+      </div>
+      <div class="add-row">
+        <input placeholder="Add a task…">
+        <button>+ Add</button>
+      </div>
+      <div class="bucket">
+        <div class="bucket-title">Must Do</div>
+        <div class="task-row"><div class="cb done"></div><span class="task-label done">Write LinkedIn post — AI in engineering</span><span class="tag">LinkedIn</span></div>
+        <div class="task-row"><div class="cb done"></div><span class="task-label done">1:1s with all direct reports</span><span class="tag">Work</span></div>
+        <div class="task-row"><div class="cb"></div><span class="task-label">Finish newsletter draft #14</span><span class="tag">Newsletter</span></div>
+        <div class="task-row"><div class="cb"></div><span class="task-label">Review Q2 team goals doc</span><span class="tag">Work</span></div>
+        <div class="task-row"><div class="cb"></div><span class="task-label">Record podcast intro segment</span><span class="tag">Content</span></div>
+      </div>
+      <div class="bucket">
+        <div class="bucket-title">Nice to Have</div>
+        <div class="task-row"><div class="cb"></div><span class="task-label">Order standing desk mat</span><span class="tag">Home</span></div>
+        <div class="task-row"><div class="cb"></div><span class="task-label">Score hooks on 10 more 2023 posts</span><span class="tag">LinkedIn</span></div>
+        <div class="task-row"><div class="cb"></div><span class="task-label">Read chapter 3 of Deep Work</span><span class="tag">Reading</span></div>
+      </div>
+      <div class="next-week-row">
+        <span class="nw-label">Next Week</span>
+        <span class="nw-count">4 tasks ›</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- LinkedIn -->
+  <div class="content" id="pane-linkedin" style="display:none">
+    <div class="linkedin">
+      <div class="li-top">
+        <div class="li-top-row">
+          <div class="li-title">LinkedIn Posts</div>
+        </div>
+        <div class="filters">
+          <input class="f-date" placeholder="From" value="Jan 2023">
+          <input class="f-date" placeholder="To" value="Dec 2023">
+          <div class="f-chip on">Hide dupes</div>
+          <div class="f-chip">Show sunset</div>
+        </div>
+      </div>
+      <div style="overflow-x:auto; flex:1;">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:40%">Hook ↕</th>
+              <th>Date ↓</th>
+              <th>👍</th>
+              <th>💬</th>
+              <th>🔁</th>
+              <th>👁</th>
+              <th>Score</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="hook-col">80% of team leaders I talked to, considered going back...<span class="dup">×2</span></td>
+              <td>28 Aug</td><td>469</td><td>87</td><td>34</td><td>155k</td>
+              <td><span class="score-val s8">7/10</span></td>
+              <td><button class="sunset-btn">🌅</button></td>
+            </tr>
+            <tr>
+              <td class="hook-col">When asking for help, the response I hate the most is...</td>
+              <td>4 Oct</td><td>265</td><td>52</td><td>18</td><td>148k</td>
+              <td><span class="score-val s4">4/10</span></td>
+              <td><button class="sunset-btn">🌅</button></td>
+            </tr>
+            <tr>
+              <td class="hook-col">Stop overcomplicating Git! 99% of the time, you need only 7 commands.</td>
+              <td>24 Aug</td><td>942</td><td>143</td><td>97</td><td>133k</td>
+              <td><span class="score-val s8">8/10</span></td>
+              <td><button class="sunset-btn">🌅</button></td>
+            </tr>
+            <tr>
+              <td class="hook-col">Become an SQL master with 1 simple trick: Using CTEs.</td>
+              <td>20 Jul</td><td>611</td><td>78</td><td>51</td><td>107k</td>
+              <td><span class="score-val s7">6/10</span></td>
+              <td><button class="sunset-btn">🌅</button></td>
+            </tr>
+            <tr>
+              <td class="hook-col">Publishing your website for FREE in 60 seconds...</td>
+              <td>26 Jun</td><td>595</td><td>66</td><td>43</td><td>72k</td>
+              <td><span class="score-val s5">5/10</span></td>
+              <td><button class="sunset-btn">🌅</button></td>
+            </tr>
+            <tr>
+              <td class="hook-col">A developer spends 63 hours each year waiting for Docker builds!</td>
+              <td>21 Jun</td><td>183</td><td>29</td><td>14</td><td>35k</td>
+              <td><span class="score-val s7">7/10</span></td>
+              <td><button class="sunset-btn">🌅</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Newsletter placeholder -->
+  <div class="content" id="pane-newsletter" style="display:none">
+    <div class="placeholder-tab">Newsletter — coming soon</div>
+  </div>
+
+  <!-- Capture placeholder -->
+  <div class="content" id="pane-capture" style="display:none">
+    <div class="placeholder-tab">Capture — coming soon</div>
+  </div>
+
+</div>
+</div>
+
+<script>
+const paneMap = {
+  'tasks-today': 'tasks', 'tasks-week': 'tasks',
+  'linkedin': 'linkedin', 'newsletter': 'newsletter', 'capture': 'capture'
+};
+function show(id, btn) {
+  ['tasks-today','tasks-week','linkedin','newsletter','capture'].forEach(p => {
+    const el = document.getElementById('pane-'+p);
+    if (el) el.style.display = 'none';
+  });
+  const pane = document.getElementById('pane-'+id);
+  if (pane) pane.style.display = '';
+
+  ['tasks','newsletter','linkedin','capture'].forEach(n => {
+    document.getElementById('nav-'+n)?.classList.remove('active');
+  });
+  const navKey = paneMap[id];
+  document.getElementById('nav-'+navKey)?.classList.add('active');
+
+  if (btn) {
+    document.querySelectorAll('.sw').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  if (window.recordEvent) window.recordEvent('click', id, id);
+}
+</script>
+</body>
+</html>

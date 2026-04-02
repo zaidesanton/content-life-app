@@ -1,0 +1,104 @@
+<h2>Navigation Style</h2>
+<p class="subtitle">This shapes the entire mobile feel of the app. Pick the one that fits how you'll use it.</p>
+
+<div class="cards" style="grid-template-columns: repeat(3, 1fr);">
+
+  <div class="card" data-choice="bottom-tabs" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f0f0f; padding:16px; border-radius:8px; font-family:system-ui;">
+      <!-- Phone frame -->
+      <div style="background:#1a1a1a; border-radius:16px; overflow:hidden; border:1px solid #333; max-width:180px; margin:0 auto;">
+        <div style="padding:20px 16px 60px; min-height:200px;">
+          <div style="background:#222; border-radius:8px; height:28px; width:60%; margin-bottom:10px;"></div>
+          <div style="background:#1d1d1d; border-radius:6px; height:16px; width:90%; margin-bottom:6px;"></div>
+          <div style="background:#1d1d1d; border-radius:6px; height:16px; width:75%; margin-bottom:6px;"></div>
+          <div style="background:#1d1d1d; border-radius:6px; height:16px; width:85%; margin-bottom:16px;"></div>
+          <div style="background:#1d1d1d; border-radius:6px; height:16px; width:90%; margin-bottom:6px;"></div>
+          <div style="background:#1d1d1d; border-radius:6px; height:16px; width:70%;"></div>
+        </div>
+        <!-- Bottom tab bar -->
+        <div style="display:flex; background:#111; border-top:1px solid #2a2a2a; padding:10px 0 14px;">
+          <div style="flex:1; text-align:center;">
+            <div style="font-size:18px;">✓</div>
+            <div style="font-size:9px; color:#4f9cf9; margin-top:2px;">Tasks</div>
+          </div>
+          <div style="flex:1; text-align:center; opacity:0.4;">
+            <div style="font-size:18px;">✉</div>
+            <div style="font-size:9px; color:#888; margin-top:2px;">Newsletter</div>
+          </div>
+          <div style="flex:1; text-align:center; opacity:0.4;">
+            <div style="font-size:18px;">in</div>
+            <div style="font-size:9px; color:#888; margin-top:2px;">LinkedIn</div>
+          </div>
+          <div style="flex:1; text-align:center; opacity:0.4;">
+            <div style="font-size:18px;">⚡</div>
+            <div style="font-size:9px; color:#888; margin-top:2px;">Capture</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Bottom Tab Bar</h3>
+      <p>Thumb-reachable on mobile. Industry standard for iOS/Android apps. On desktop it becomes a bottom bar or adapts to a sidebar.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="top-tabs" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f0f0f; padding:16px; border-radius:8px; font-family:system-ui;">
+      <div style="background:#1a1a1a; border-radius:16px; overflow:hidden; border:1px solid #333; max-width:180px; margin:0 auto;">
+        <!-- Top nav -->
+        <div style="background:#111; border-bottom:1px solid #2a2a2a; padding:10px 0;">
+          <div style="display:flex; overflow:hidden;">
+            <div style="flex:1; text-align:center; padding:6px 2px; border-bottom:2px solid #4f9cf9;">
+              <div style="font-size:9px; color:#4f9cf9; font-weight:600;">Tasks</div>
+            </div>
+            <div style="flex:1; text-align:center; padding:6px 2px; opacity:0.4;">
+              <div style="font-size:9px; color:#888;">News</div>
+            </div>
+            <div style="flex:1; text-align:center; padding:6px 2px; opacity:0.4;">
+              <div style="font-size:9px; color:#888;">LinkedIn</div>
+            </div>
+            <div style="flex:1; text-align:center; padding:6px 2px; opacity:0.4;">
+              <div style="font-size:9px; color:#888;">Capture</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding:16px; min-height:220px;">
+          <div style="background:#222; border-radius:8px; height:28px; width:60%; margin-bottom:10px;"></div>
+          <div style="background:#1d1d1d; border-radius:6px; height:16px; width:90%; margin-bottom:6px;"></div>
+          <div style="background:#1d1d1d; border-radius:6px; height:16px; width:75%; margin-bottom:6px;"></div>
+          <div style="background:#1d1d1d; border-radius:6px; height:16px; width:85%;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Top Tab Bar</h3>
+      <p>Familiar web pattern (like Notion, Linear). Easy to swipe between tabs. Requires a stretch on mobile to reach with one hand.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="sidebar" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f0f0f; padding:16px; border-radius:8px; font-family:system-ui;">
+      <div style="background:#1a1a1a; border-radius:16px; overflow:hidden; border:1px solid #333; max-width:180px; margin:0 auto; display:flex; min-height:260px;">
+        <!-- Sidebar -->
+        <div style="background:#111; border-right:1px solid #2a2a2a; padding:16px 8px; display:flex; flex-direction:column; gap:12px; width:44px;">
+          <div style="width:24px; height:24px; background:#4f9cf9; border-radius:6px; margin:0 auto;"></div>
+          <div style="width:24px; height:24px; background:#2a2a2a; border-radius:6px; margin:0 auto;"></div>
+          <div style="width:24px; height:24px; background:#2a2a2a; border-radius:6px; margin:0 auto;"></div>
+          <div style="width:24px; height:24px; background:#2a2a2a; border-radius:6px; margin:0 auto;"></div>
+        </div>
+        <!-- Content -->
+        <div style="flex:1; padding:16px;">
+          <div style="background:#222; border-radius:8px; height:22px; width:70%; margin-bottom:10px;"></div>
+          <div style="background:#1d1d1d; border-radius:6px; height:14px; width:90%; margin-bottom:6px;"></div>
+          <div style="background:#1d1d1d; border-radius:6px; height:14px; width:80%; margin-bottom:6px;"></div>
+          <div style="background:#1d1d1d; border-radius:6px; height:14px; width:85%;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Icon Sidebar</h3>
+      <p>Desktop-first feel (like VS Code, Slack). Takes horizontal space on mobile — typically hidden behind a hamburger. Best if you use this mostly on desktop.</p>
+    </div>
+  </div>
+
+</div>
