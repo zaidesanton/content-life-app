@@ -9,7 +9,7 @@ export async function saveHookScore(postId: string, score: number) {
     .update({ hook_score: score })
     .eq('id', postId)
   if (error) throw new Error(error.message)
-  revalidatePath('/posts')
+  revalidatePath('/linkedin')
 }
 
 export async function toggleSunset(postId: string, value: boolean) {
@@ -18,7 +18,7 @@ export async function toggleSunset(postId: string, value: boolean) {
     .update({ is_sunset: value })
     .eq('id', postId)
   if (error) throw new Error(error.message)
-  revalidatePath('/posts')
+  revalidatePath('/linkedin')
 }
 
 export async function fetchPostContent(postId: string): Promise<string | null> {

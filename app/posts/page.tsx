@@ -1,40 +1,5 @@
-import { supabase } from '@/lib/supabase'
-import PostsTable from './PostsTable'
+import { redirect } from 'next/navigation'
 
-export const revalidate = 0
-
-export type PostRow = {
-  id: string
-  hook: string
-  published_at: string
-  reactions: number
-  impressions: number
-  hook_score: number | null
-  hook_alternatives: string[] | null
-  parent_id: string | null
-  is_sunset: boolean
-  post_url: string | null
-}
-
-export default async function PostsPage() {
-  const { data, error } = await supabase
-    .from('linkedin_posts')
-    .select('id, hook, published_at, reactions, impressions, hook_score, hook_alternatives, parent_id, is_sunset, post_url')
-    .order('published_at', { ascending: false })
-
-  if (error) {
-    return <div className="p-8 text-red-500">Error: {error.message}</div>
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
-      <div className="max-w-5xl mx-auto px-4 py-10">
-        <div className="mb-6">
-          <a href="/" className="text-sm text-gray-600 hover:text-gray-300 transition-colors">← Home</a>
-          <h1 className="text-xl font-semibold mt-3">LinkedIn Posts</h1>
-        </div>
-        <PostsTable posts={data as PostRow[]} />
-      </div>
-    </div>
-  )
+export default function PostsPage() {
+  redirect('/linkedin')
 }
