@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth:*)",
+      "Bash(npm --version)",
+      "mcp__73053cd9-14de-45c5-be99-f5e60645cf70__list_organizations",
+      "mcp__2b7b102f-23a3-49f8-84d4-e71310e2e871__list_teams",
+      "mcp__73053cd9-14de-45c5-be99-f5e60645cf70__get_project_url",
+      "mcp__73053cd9-14de-45c5-be99-f5e60645cf70__get_publishable_keys",
+      "mcp__73053cd9-14de-45c5-be99-f5e60645cf70__apply_migration",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --app --no-src-dir --eslint --import-alias \"@/*\" --yes)",
+      "Read(//c/Users/Taranis/Documents/Projects/Managar Dev/Repos/**)",
+      "Bash(npx create-next-app@latest content-life-app --typescript --tailwind --app --no-src-dir --eslint --import-alias \"@/*\" --yes)",
+      "Bash(npm install:*)",
+      "Bash(npx vercel:*)",
+      "Bash(python3 -c \"import requests; print\\(''ok''\\)\")",
+      "Bash(python3 import_linkedin.py)",
+      "Bash(python3 -c \":*)",
+      "Bash(wc -l \"C:/Users/Taranis/Documents/Projects/Managar Dev/Repos/Content+Life App/sql_batches/\"*.sql)",
+      "mcp__73053cd9-14de-45c5-be99-f5e60645cf70__execute_sql",
+      "Bash(npm run:*)",
+      "Bash(python3 -c \"import zipfile; z = zipfile.ZipFile\\(''C:/Users/Taranis/Documents/Projects/Managar Dev/Repos/Content+Life App/The_Art_and_Business_of_Online_Writing_How_to_Beat_the_Game_of_Capturing_and_Keeping_Attention_Nicolas_Cole_Cole_Nicolas.epub''\\); print\\(''\\\\n''.join\\(z.namelist\\(\\)\\)\\)\")",
+      "Bash(python3:*)",
+      "Bash(grep -v \"^[0-9]*:$\")",
+      "Bash(awk -F: 'NR>=80 && NR<=200 {print}')"
+    ]
+  }
+}

@@ -8,7 +8,15 @@ export async function saveHookScore(postId: string, score: number) {
     .from('linkedin_posts')
     .update({ hook_score: score })
     .eq('id', postId)
+  if (error) throw new Error(error.message)
+  revalidatePath('/posts')
+}
 
+export async function toggleSunset(postId: string, value: boolean) {
+  const { error } = await supabase
+    .from('linkedin_posts')
+    .update({ is_sunset: value })
+    .eq('id', postId)
   if (error) throw new Error(error.message)
   revalidatePath('/posts')
 }
@@ -19,7 +27,6 @@ export async function fetchPostContent(postId: string): Promise<string | null> {
     .select('content')
     .eq('id', postId)
     .single()
-
   if (error || !data) return null
   return data.content
 }

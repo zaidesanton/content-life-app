@@ -11,16 +11,16 @@ export type PostRow = {
   impressions: number
   hook_score: number | null
   hook_alternatives: string[] | null
+  parent_id: string | null
+  is_sunset: boolean
   post_url: string | null
 }
 
 export default async function PostsPage() {
   const { data, error } = await supabase
     .from('linkedin_posts')
-    .select('id, hook, published_at, reactions, impressions, hook_score, hook_alternatives, post_url')
-    .gte('published_at', '2023-01-01')
-    .lt('published_at', '2024-01-01')
-    .order('impressions', { ascending: false })
+    .select('id, hook, published_at, reactions, impressions, hook_score, hook_alternatives, parent_id, is_sunset, post_url')
+    .order('published_at', { ascending: false })
 
   if (error) {
     return <div className="p-8 text-red-500">Error: {error.message}</div>
@@ -29,10 +29,9 @@ export default async function PostsPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
       <div className="max-w-5xl mx-auto px-4 py-10">
-        <div className="mb-8">
+        <div className="mb-6">
           <a href="/" className="text-sm text-gray-600 hover:text-gray-300 transition-colors">← Home</a>
-          <h1 className="text-xl font-semibold mt-3">LinkedIn 2023 — Hook Analysis</h1>
-          <p className="text-gray-600 text-sm mt-1">{data.length} posts · click to expand</p>
+          <h1 className="text-xl font-semibold mt-3">LinkedIn Posts</h1>
         </div>
         <PostsTable posts={data as PostRow[]} />
       </div>
