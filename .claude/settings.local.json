@@ -29,7 +29,8 @@
       "Bash(\"C:/Users/Taranis/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/brainstorming/scripts/start-server.sh\" --project-dir \"C:/Users/Taranis/Documents/Projects/Managar Dev/Repos/Content+Life App\" --port 3333)",
       "Bash(curl -s http://localhost:56108/ --max-time 3 -o /dev/null -w \"%{http_code}\")",
       "mcp__Claude_Preview__preview_start",
-      "Bash(curl -s http://localhost:54036/ -o /dev/null -w \"%{http_code}\")"
+      "Bash(curl -s http://localhost:54036/ -o /dev/null -w \"%{http_code}\")",
+      "mcp__2b7b102f-23a3-49f8-84d4-e71310e2e871__list_deployments"
     ]
   }
 }
