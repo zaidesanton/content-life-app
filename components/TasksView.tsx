@@ -88,12 +88,23 @@ function isCompleted(task: Task): boolean {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
+/** For a recurring task, return the actual calendar date it falls on within the given week offset */
+function recurringDateLabel(recurrenceDay: number, weekOffset: number): string {
+  const [weekStart] = weekRange(weekOffset)
+  const monday = new Date(weekStart + 'T12:00:00')
+  const offset = (recurrenceDay - 1 + 7) % 7 // Mon=0 … Sun=6
+  const d = new Date(monday)
+  d.setDate(monday.getDate() + offset)
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
 function Bucket({
-  title, tasks, onToggle,
+  title, tasks, onToggle, view,
 }: {
   title: string
   tasks: Task[]
   onToggle: (t: Task) => void
+  view: View
 }) {
   if (tasks.length === 0) return null
   return (
@@ -102,6 +113,20 @@ function Bucket({
       <div className="divide-y divide-[#0f0f0f]">
         {tasks.map(task => {
           const done = isCompleted(task)
+          // Compute date label
+          let dateLabel = ''
+          if (task.is_recurring && task.recurrence_day !== null) {
+            if (view === 'today') {
+              dateLabel = '🔁 weekly'
+            } else {
+              const weekOffset = view === 'next_week' ? 1 : 0
+              dateLabel = recurringDateLabel(task.recurrence_day, weekOffset)
+            }
+          } else if (task.due_date) {
+            dateLabel = new Date(task.due_date + 'T12:00:00')
+              .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+          }
+
           return (
             <div key={task.id} className="flex items-center gap-2.5 py-2">
               <button
@@ -115,18 +140,14 @@ function Bucket({
               <span className={`text-[13px] flex-1 ${done ? 'line-through text-[#333]' : 'text-[#bbb]'}`}>
                 {task.title}
               </span>
-              {task.is_recurring && (
-                <span className="text-[10px] text-[#333]">
-                  🔁 {DAY_LABELS.find(d => d.day === task.recurrence_day)?.short}
-                </span>
-              )}
-              {!task.is_recurring && task.due_date && (
-                <span className="text-[10px] text-[#333] tabular-nums">
-                  {new Date(task.due_date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              {dateLabel && (
+                <span className={`text-[11px] tabular-nums shrink-0 ${done ? 'text-[#333]' : 'text-[#666]'}`}>
+                  {task.is_recurring && view !== 'today' && <span className="mr-1 text-[#444]">🔁</span>}
+                  {dateLabel.replace('🔁 ', '')}
                 </span>
               )}
               {task.category && (
-                <span className="text-[10px] text-[#333] border border-[#1a1a1a] rounded-full px-1.5 py-0.5">
+                <span className="text-[10px] text-[#444] border border-[#1a1a1a] rounded-full px-1.5 py-0.5">
                   {task.category}
                 </span>
               )}
@@ -297,8 +318,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
       </form>
 
       {/* Buckets */}
-      <Bucket title="Must Do" tasks={mustDo} onToggle={handleToggle} />
-      <Bucket title="Nice to Have" tasks={niceTo} onToggle={handleToggle} />
+      <Bucket title="Must Do" tasks={mustDo} onToggle={handleToggle} view={view} />
+      <Bucket title="Nice to Have" tasks={niceTo} onToggle={handleToggle} view={view} />
 
       {/* Next week collapsed row */}
       {view !== 'next_week' && (
