@@ -15,7 +15,7 @@ const SCORE_COLOR: Record<number, string> = {
 }
 
 function ScoreBadge({ score }: { score: number | null }) {
-  if (!score) return <span className="text-[#333] text-xs">—</span>
+  if (!score) return <span className="text-[#555] text-xs">—</span>
   return <span className={`text-xs font-bold tabular-nums ${SCORE_COLOR[score]}`}>{score}/10</span>
 }
 
@@ -129,13 +129,13 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
           <button
             onClick={() => setShowDupes(v => !v)}
             className={`px-3 py-1 rounded-md text-[11px] border transition-colors ${
-              showDupes ? 'bg-[#141414] border-[#252525] text-[#777]' : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#444] hover:text-[#777]'
+              showDupes ? 'bg-[#141414] border-[#252525] text-[#777]' : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666] hover:text-[#999]'
             }`}
           >Show dupes</button>
           <button
             onClick={() => setShowSunset(v => !v)}
             className={`px-3 py-1 rounded-md text-[11px] border transition-colors ${
-              showSunset ? 'bg-[#141414] border-[#252525] text-[#777]' : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#444] hover:text-[#777]'
+              showSunset ? 'bg-[#141414] border-[#252525] text-[#777]' : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666] hover:text-[#999]'
             }`}
           >Show sunset</button>
         </div>
@@ -150,7 +150,7 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
                 className={`px-2.5 py-0.5 rounded-full text-[11px] border transition-colors ${
                   tagFilter === tag
                     ? 'bg-[#1a2a1a] border-[#2a4a2a] text-[#6a9a6a]'
-                    : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#444] hover:text-[#777] hover:border-[#2a2a2a]'
+                    : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666] hover:text-[#999] hover:border-[#2a2a2a]'
                 }`}
               >
                 {tag}
@@ -239,7 +239,7 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
                         onClick={e => handleSunset(e, post.id)}
                         title={isSunset ? 'Restore' : 'Sunset this post'}
                         className={`text-[13px] px-1 py-0.5 rounded transition-colors ${
-                          isSunset ? 'text-orange-400' : 'text-[#2a2a2a] hover:text-[#888]'
+                          isSunset ? 'text-orange-400' : 'text-[#444] hover:text-[#888]'
                         }`}
                       >🌅</button>
                     </td>

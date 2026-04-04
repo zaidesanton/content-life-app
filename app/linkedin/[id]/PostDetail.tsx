@@ -69,7 +69,7 @@ function TagEditor({
           {tag}
           <button
             onClick={() => remove(tag)}
-            className="text-[#333] hover:text-[#888] transition-colors leading-none ml-0.5"
+            className="text-[#555] hover:text-[#999] transition-colors leading-none ml-0.5"
           >×</button>
         </span>
       ))}
@@ -85,7 +85,7 @@ function TagEditor({
             if (e.key === 'Escape') { setOpen(false); setInput('') }
           }}
           placeholder="+ add tag"
-          className="bg-transparent border border-dashed border-[#222] rounded-full px-2.5 py-0.5 text-[11px] text-[#666] placeholder:text-[#333] focus:outline-none focus:border-[#444] w-20 focus:w-28 transition-all"
+          className="bg-transparent border border-dashed border-[#333] rounded-full px-2.5 py-0.5 text-[11px] text-[#777] placeholder:text-[#555] focus:outline-none focus:border-[#555] w-20 focus:w-28 transition-all"
         />
         {open && (input || suggestions.length > 0) && (
           <div className="absolute top-7 left-0 z-20 bg-[#141414] border border-[#252525] rounded-lg overflow-hidden min-w-[140px] shadow-xl">
@@ -182,13 +182,13 @@ export default function PostDetail({
 
         {/* Tags */}
         <div>
-          <p className="text-[10px] font-semibold text-[#444] uppercase tracking-widest mb-3">Tags</p>
+          <p className="text-[10px] font-semibold text-[#666] uppercase tracking-widest mb-3">Tags</p>
           <TagEditor tags={tags} allTags={allTags} onChange={handleTagsChange} />
         </div>
 
         {/* Score */}
         <div>
-          <p className="text-[10px] font-semibold text-[#444] uppercase tracking-widest mb-3">Hook Score</p>
+          <p className="text-[10px] font-semibold text-[#666] uppercase tracking-widest mb-3">Hook Score</p>
           <div className="flex items-center gap-3 flex-wrap">
             {score && (
               <span className={`text-sm font-bold tabular-nums ${SCORE_COLOR[score]}`}>{score}/10</span>
@@ -201,7 +201,7 @@ export default function PostDetail({
                   className={`w-7 h-7 rounded text-[12px] font-semibold transition-all ${
                     score === n
                       ? `${SCORE_COLOR[n]} bg-[#1a1a1a] ring-1 ring-current`
-                      : 'text-[#444] hover:text-[#aaa]'
+                      : 'text-[#555] hover:text-[#aaa]'
                   }`}
                 >{n}</button>
               ))}
@@ -212,11 +212,11 @@ export default function PostDetail({
         {/* Hook alternatives */}
         {post.hook_alternatives && post.hook_alternatives.length > 0 && (
           <div>
-            <p className="text-[10px] font-semibold text-[#444] uppercase tracking-widest mb-3">10/10 Alternatives</p>
+            <p className="text-[10px] font-semibold text-[#666] uppercase tracking-widest mb-3">10/10 Alternatives</p>
             <div className="space-y-3">
               {post.hook_alternatives.map((alt, i) => (
                 <div key={i} className="flex gap-3 items-start">
-                  <span className="text-[11px] text-[#333] mt-0.5 shrink-0 w-4 tabular-nums">{i + 1}.</span>
+                  <span className="text-[11px] text-[#555] mt-0.5 shrink-0 w-4 tabular-nums">{i + 1}.</span>
                   <p className="text-[14px] text-[#888] leading-snug">{alt}</p>
                 </div>
               ))}
@@ -227,7 +227,7 @@ export default function PostDetail({
         {/* Duplicate reposts */}
         {dupes.length > 0 && (
           <div>
-            <p className="text-[10px] font-semibold text-[#444] uppercase tracking-widest mb-3">
+            <p className="text-[10px] font-semibold text-[#666] uppercase tracking-widest mb-3">
               Reposted {dupes.length}×
             </p>
             <div className="flex flex-wrap gap-2">
@@ -241,7 +241,7 @@ export default function PostDetail({
                 >
                   {new Date(dupe.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}
                   {dupe.impressions > 0 && (
-                    <span className="text-[#444] ml-1">· {dupe.impressions.toLocaleString()} imp</span>
+                    <span className="text-[#666] ml-1">· {dupe.impressions.toLocaleString()} imp</span>
                   )}
                 </a>
               ))}
@@ -266,7 +266,7 @@ export default function PostDetail({
               href={post.post_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[12px] text-[#444] hover:text-[#999] transition-colors"
+              className="text-[12px] text-[#666] hover:text-[#999] transition-colors"
             >
               View on LinkedIn →
             </a>
