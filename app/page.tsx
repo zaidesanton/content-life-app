@@ -7,30 +7,37 @@ export type Task = {
   id: string
   title: string
   bucket: 'must_do' | 'nice_to_have'
-  due_date: string | null          // YYYY-MM-DD, null for recurring
-  is_recurring: boolean
-  recurrence_day: number | null    // 0=Sun 1=Mon … 6=Sat, null if not recurring
-  completed: boolean               // used for non-recurring only
+  due_date: string            // YYYY-MM-DD
+  recurring_task_id: string | null
+  completed_date: string | null  // YYYY-MM-DD
   category: string | null
-  task_type: string | null         // 'linkedin' | 'newsletter' | 'home' | null
-  created_at: string
+  task_type: string | null
 }
 
-export type Completion = {
-  task_id: string
-  completed_date: string           // YYYY-MM-DD
+function toDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 export default async function TasksPage() {
-  const [{ data: tasks }, { data: completions }] = await Promise.all([
-    supabase.from('tasks').select('*').order('created_at', { ascending: true }),
-    supabase.from('task_completions').select('task_id, completed_date'),
-  ])
+  const today = new Date()
+  const mondayOffset = (today.getDay() + 6) % 7
+
+  // Monday of current week
+  const weekStart = new Date(today)
+  weekStart.setDate(today.getDate() - mondayOffset)
+
+  // Sunday of next week (13 days from that Monday)
+  const nextWeekEnd = new Date(weekStart)
+  nextWeekEnd.setDate(weekStart.getDate() + 13)
+
+  const { data: tasks } = await supabase
+    .from('tasks')
+    .select('id, title, bucket, task_type, category, due_date, recurring_task_id, completed_date')
+    .gte('due_date', toDateStr(weekStart))
+    .lte('due_date', toDateStr(nextWeekEnd))
+    .order('due_date', { ascending: true })
 
   return (
-    <TasksView
-      tasks={(tasks ?? []) as Task[]}
-      completions={(completions ?? []) as Completion[]}
-    />
+    <TasksView tasks={(tasks ?? []) as Task[]} />
   )
 }

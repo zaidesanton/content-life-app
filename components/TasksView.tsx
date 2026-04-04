@@ -1,30 +1,14 @@
 'use client'
 
 import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
-import type { Task, Completion } from '@/app/page'
-import { createTask, toggleTask, deleteTask, updateTaskType } from '@/app/actions'
+import type { Task } from '@/app/page'
+import { createTask, toggleTask, deleteTask, deleteRecurringTask, updateTaskType } from '@/app/actions'
 import PageTabs from '@/components/PageTabs'
 
 type View = 'today' | 'this_week' | 'next_week'
 type TaskType = 'linkedin' | 'newsletter' | 'home'
 
-const VIEW_LABELS: Record<View, string> = {
-  today: 'Today',
-  this_week: 'This Week',
-  next_week: 'Next Week',
-}
-
-const DAY_LABELS: { day: number; short: string }[] = [
-  { day: 1, short: 'Mon' },
-  { day: 2, short: 'Tue' },
-  { day: 3, short: 'Wed' },
-  { day: 4, short: 'Thu' },
-  { day: 5, short: 'Fri' },
-  { day: 6, short: 'Sat' },
-  { day: 0, short: 'Sun' },
-]
-
-// ── Task type config ──────────────────────────────────────────────────────────
+// ── SVG icons ─────────────────────────────────────────────────────────────────
 
 function LinkedInSvg() {
   return (
@@ -177,6 +161,7 @@ function todayISO() {
   return toLocalDateStr(new Date())
 }
 
+// Returns [monday, sunday] of the given week (offset 0 = current, 1 = next)
 function weekRange(offset = 0): [string, string] {
   const now = new Date()
   const mon = new Date(now)
@@ -185,11 +170,6 @@ function weekRange(offset = 0): [string, string] {
   const sun = new Date(mon)
   sun.setDate(mon.getDate() + 6)
   return [toLocalDateStr(mon), toLocalDateStr(sun)]
-}
-
-function viewWindow(view: View): [string, string] {
-  if (view === 'today') { const t = todayISO(); return [t, t] }
-  return weekRange(view === 'next_week' ? 1 : 0)
 }
 
 function defaultDueDate(view: View): string {
@@ -206,70 +186,35 @@ function viewSubtitle(view: View): string {
   return `${fmt(s)} – ${fmt(e)}`
 }
 
-// ── Completion helpers ────────────────────────────────────────────────────────
+// ── Task helpers ──────────────────────────────────────────────────────────────
 
-/** True if the task has a completion record within the view's date window */
-function isCompleted(task: Task, view: View, completions: Completion[]): boolean {
-  if (task.is_recurring) {
-    const [start, end] = viewWindow(view)
-    return completions.some(
-      c => c.task_id === task.id && c.completed_date >= start && c.completed_date <= end,
-    )
-  }
-  return task.completed
+function isCompleted(task: Task): boolean {
+  return !!task.completed_date
 }
 
-/** True if the task should appear in this view */
-function isTaskInView(task: Task, view: View, completions: Completion[]): boolean {
-  const today = todayISO()
-  const [thisStart, thisEnd] = weekRange(0)
-  const [nextStart, nextEnd] = weekRange(1)
-
-  if (task.is_recurring && task.recurrence_day !== null) {
-    if (view === 'today') {
-      const doneToday = completions.some(c => c.task_id === task.id && c.completed_date === today)
-      return new Date().getDay() === task.recurrence_day && !doneToday
-    }
-    return true
-  }
-
-  const due = task.due_date
-  if (!due) return view === 'today'
-  if (view === 'today') return due === today
-  if (view === 'this_week') return due >= thisStart && due <= thisEnd
-  return due >= nextStart && due <= nextEnd
+function isTaskInView(task: Task, view: View): boolean {
+  if (view === 'today') return task.due_date === todayISO()
+  const [start, end] = weekRange(view === 'next_week' ? 1 : 0)
+  return task.due_date >= start && task.due_date <= end
 }
 
-function recurringDateInWeek(recurrenceDay: number, weekOffset: number): Date {
-  const [weekStart] = weekRange(weekOffset)
-  const monday = new Date(weekStart + 'T12:00:00')
-  const offset = (recurrenceDay - 1 + 7) % 7
-  const d = new Date(monday)
-  d.setDate(monday.getDate() + offset)
-  return d
-}
-
-function recurringDateLabel(recurrenceDay: number, weekOffset: number): string {
-  return recurringDateInWeek(recurrenceDay, weekOffset)
-    .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
-}
-
-function taskSortDate(task: Task, view: View): string {
-  if (task.is_recurring && task.recurrence_day !== null) {
-    if (view === 'today') return todayISO()
-    return toLocalDateStr(recurringDateInWeek(task.recurrence_day, view === 'next_week' ? 1 : 0))
-  }
-  return task.due_date ?? '9999-12-31'
-}
+const DAY_LABELS: { day: number; short: string }[] = [
+  { day: 1, short: 'Mon' },
+  { day: 2, short: 'Tue' },
+  { day: 3, short: 'Wed' },
+  { day: 4, short: 'Thu' },
+  { day: 5, short: 'Fri' },
+  { day: 6, short: 'Sat' },
+  { day: 0, short: 'Sun' },
+]
 
 // ── Bucket ────────────────────────────────────────────────────────────────────
 
 function Bucket({
-  title, tasks, completions, onToggle, onDelete, onTypeChange, completing, view,
+  title, tasks, onToggle, onDelete, onTypeChange, completing, view,
 }: {
   title: string
   tasks: Task[]
-  completions: Completion[]
   onToggle: (t: Task) => void
   onDelete: (t: Task) => void
   onTypeChange: (t: Task, type: TaskType | null) => void
@@ -278,12 +223,12 @@ function Bucket({
 }) {
   const sorted = useMemo(() => {
     return [...tasks].sort((a, b) => {
-      const aDone = isCompleted(a, view, completions) && !completing.has(a.id) ? 1 : 0
-      const bDone = isCompleted(b, view, completions) && !completing.has(b.id) ? 1 : 0
+      const aDone = isCompleted(a) && !completing.has(String(a.id)) ? 1 : 0
+      const bDone = isCompleted(b) && !completing.has(String(b.id)) ? 1 : 0
       if (aDone !== bDone) return aDone - bDone
-      return taskSortDate(a, view) < taskSortDate(b, view) ? -1 : 1
+      return a.due_date < b.due_date ? -1 : 1
     })
-  }, [tasks, view, completing, completions])
+  }, [tasks, completing])
 
   if (sorted.length === 0) return null
 
@@ -292,16 +237,15 @@ function Bucket({
       <p className="text-[10px] font-semibold text-[#999] uppercase tracking-[.08em] mb-2.5">{title}</p>
       <div className="divide-y divide-[#0f0f0f]">
         {sorted.map(task => {
-          const done = isCompleted(task, view, completions)
-          const isAnimating = completing.has(task.id)
+          const done = isCompleted(task)
+          const isAnimating = completing.has(String(task.id))
+          const isRecurring = !!task.recurring_task_id
 
-          let dateLabel = ''
-          if (task.is_recurring && task.recurrence_day !== null) {
-            dateLabel = view === 'today' ? 'weekly' : recurringDateLabel(task.recurrence_day, view === 'next_week' ? 1 : 0)
-          } else if (task.due_date) {
-            dateLabel = new Date(task.due_date + 'T12:00:00')
-              .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
-          }
+          const dateLabel = view === 'today'
+            ? ''
+            : new Date(task.due_date + 'T12:00:00').toLocaleDateString('en-GB', {
+                weekday: 'short', day: 'numeric', month: 'short',
+              })
 
           return (
             <div
@@ -329,7 +273,7 @@ function Bucket({
 
               <TypePicker current={task.task_type} onChange={type => onTypeChange(task, type)} />
 
-              {task.is_recurring && view !== 'today' && (
+              {isRecurring && view !== 'today' && (
                 <span className={`text-[11px] shrink-0 leading-none ${done ? 'opacity-40' : 'opacity-70'}`}>🔁</span>
               )}
 
@@ -342,7 +286,7 @@ function Bucket({
               <button
                 onClick={() => onDelete(task)}
                 className="text-[#444] hover:text-[#999] transition-colors shrink-0 px-1"
-                title={task.is_recurring ? 'Delete entire recurring series' : 'Delete task'}
+                title={isRecurring ? 'Delete recurring series' : 'Delete task'}
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M1.5 3h9M4.5 3V2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M2.5 3l.5 7h6l.5-7"/>
@@ -358,13 +302,9 @@ function Bucket({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function TasksView({ tasks, completions: initialCompletions }: {
-  tasks: Task[]
-  completions: Completion[]
-}) {
+export default function TasksView({ tasks }: { tasks: Task[] }) {
   const [view, setView] = useState<View>('today')
   const [localTasks, setLocalTasks] = useState<Task[]>(tasks)
-  const [completions, setCompletions] = useState<Completion[]>(initialCompletions)
   const [completing, setCompleting] = useState<Set<string>>(new Set())
   const [, startTransition] = useTransition()
 
@@ -380,45 +320,35 @@ export default function TasksView({ tasks, completions: initialCompletions }: {
     if (!isRecurring) setDueDate(defaultDueDate(v))
   }
 
-  const viewTasks = localTasks.filter(t => isTaskInView(t, view, completions))
+  const viewTasks = localTasks.filter(t => isTaskInView(t, view))
   const mustDo = viewTasks.filter(t => t.bucket === 'must_do')
   const niceTo = viewTasks.filter(t => t.bucket === 'nice_to_have')
-  const nextWeekCount = localTasks.filter(t => isTaskInView(t, 'next_week', completions)).length
+  const nextWeekCount = localTasks.filter(t => isTaskInView(t, 'next_week')).length
 
   function handleDelete(task: Task) {
-    if (task.is_recurring) {
+    if (task.recurring_task_id) {
       if (!window.confirm(`Delete the entire "${task.title}" recurring series? This cannot be undone.`)) return
+      setLocalTasks(ts => ts.filter(t => t.recurring_task_id !== task.recurring_task_id))
+      startTransition(() => deleteRecurringTask(task.recurring_task_id!))
+    } else {
+      setLocalTasks(ts => ts.filter(t => t.id !== task.id))
+      startTransition(() => deleteTask(String(task.id)))
     }
-    setLocalTasks(ts => ts.filter(t => t.id !== task.id))
-    startTransition(() => deleteTask(task.id))
   }
 
   function handleToggle(task: Task) {
-    const done = isCompleted(task, view, completions)
-    const next = !done
+    const next = !isCompleted(task)
     const today = todayISO()
-    const [windowStart, windowEnd] = viewWindow(view)
 
-    if (task.is_recurring) {
-      if (next) {
-        // Record actual completion date
-        setCompletions(cs => [...cs, { task_id: task.id, completed_date: today }])
-      } else {
-        // Remove any completion in the view's window
-        setCompletions(cs =>
-          cs.filter(c => !(c.task_id === task.id && c.completed_date >= windowStart && c.completed_date <= windowEnd))
-        )
-      }
-      startTransition(() => toggleTask(task.id, next, true, windowStart, windowEnd))
-    } else {
-      setLocalTasks(ts => ts.map(t => t.id === task.id ? { ...t, completed: next } : t))
-      startTransition(() => toggleTask(task.id, next, false))
-    }
+    setLocalTasks(ts =>
+      ts.map(t => t.id === task.id ? { ...t, completed_date: next ? today : null } : t)
+    )
+    startTransition(() => toggleTask(String(task.id), next))
 
     if (next) {
-      setCompleting(s => new Set([...s, task.id]))
+      setCompleting(s => new Set([...s, String(task.id)]))
       setTimeout(() => {
-        setCompleting(s => { const n = new Set(s); n.delete(task.id); return n })
+        setCompleting(s => { const n = new Set(s); n.delete(String(task.id)); return n })
       }, 500)
     }
   }
@@ -441,20 +371,21 @@ export default function TasksView({ tasks, completions: initialCompletions }: {
     else fd.set('due_date', dueDate)
     if (newTaskType) fd.set('task_type', newTaskType)
 
-    const newTask: Task = {
-      id: crypto.randomUUID(),
-      title,
-      bucket,
-      due_date: isRecurring ? null : dueDate,
-      is_recurring: isRecurring,
-      recurrence_day: isRecurring ? recurDay : null,
-      completed: false,
-      category: null,
-      task_type: newTaskType,
-      created_at: new Date().toISOString(),
+    // Optimistic add for non-recurring tasks only
+    if (!isRecurring) {
+      const newTask: Task = {
+        id: crypto.randomUUID(),
+        title,
+        bucket,
+        due_date: dueDate,
+        recurring_task_id: null,
+        completed_date: null,
+        category: null,
+        task_type: newTaskType,
+      }
+      setLocalTasks(ts => [...ts, newTask])
     }
 
-    setLocalTasks(ts => [...ts, newTask])
     setAddTitle('')
     startTransition(() => createTask(fd))
   }
@@ -464,9 +395,9 @@ export default function TasksView({ tasks, completions: initialCompletions }: {
       <div className="border-b border-[#141414]">
         <PageTabs
           tabs={[
-            { key: 'today',     label: 'Today'    },
-            { key: 'this_week', label: 'This Week' },
-            { key: 'next_week', label: 'Next Week' },
+            { key: 'today',     label: 'Today'     },
+            { key: 'this_week', label: 'This Week'  },
+            { key: 'next_week', label: 'Next Week'  },
           ]}
           active={view}
           onChange={k => switchView(k as View)}
@@ -531,8 +462,8 @@ export default function TasksView({ tasks, completions: initialCompletions }: {
           </form>
         )}
 
-        <Bucket title="Must Do"      tasks={mustDo} completions={completions} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
-        <Bucket title="Nice to Have" tasks={niceTo} completions={completions} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
+        <Bucket title="Must Do"      tasks={mustDo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
+        <Bucket title="Nice to Have" tasks={niceTo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
 
         {view !== 'next_week' && (
           <button
