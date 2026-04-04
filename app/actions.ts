@@ -33,9 +33,9 @@ export async function updateTaskType(id: string, taskType: string | null) {
   revalidatePath('/')
 }
 
-export async function toggleTask(id: string, completed: boolean, isRecurring: boolean, completionDate?: string) {
+export async function toggleTask(id: string, completed: boolean, isRecurring: boolean) {
   if (isRecurring) {
-    const last_completed_date = completed ? (completionDate ?? new Date().toISOString().slice(0, 10)) : null
+    const last_completed_date = completed ? new Date().toISOString().slice(0, 10) : null
     await supabase.from('tasks').update({ last_completed_date }).eq('id', id)
   } else {
     await supabase.from('tasks').update({ completed }).eq('id', id)
