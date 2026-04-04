@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import type { PostFull, DupeRow } from './page'
-import { saveHookScore, toggleSunset } from '../actions'
+import { saveHookScore, toggleSunset, updatePostTags } from '../actions'
 
 const SCORE_COLOR: Record<number, string> = {
   1: 'text-red-400', 2: 'text-red-400', 3: 'text-orange-400', 4: 'text-orange-400',
@@ -11,9 +11,123 @@ const SCORE_COLOR: Record<number, string> = {
   9: 'text-green-400', 10: 'text-green-300',
 }
 
-export default function PostDetail({ post, dupes }: { post: PostFull; dupes: DupeRow[] }) {
+// ── Tag editor ────────────────────────────────────────────────────────────────
+
+function TagEditor({
+  tags, allTags, onChange,
+}: {
+  tags: string[]
+  allTags: string[]
+  onChange: (tags: string[]) => void
+}) {
+  const [input, setInput] = useState('')
+  const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const suggestions = allTags.filter(
+    t => t.toLowerCase().includes(input.toLowerCase()) && !tags.includes(t)
+  )
+
+  // Close suggestion list on outside click
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: Event) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    const tid = setTimeout(() => {
+      document.addEventListener('click', handler)
+      document.addEventListener('touchstart', handler)
+    }, 0)
+    return () => {
+      clearTimeout(tid)
+      document.removeEventListener('click', handler)
+      document.removeEventListener('touchstart', handler)
+    }
+  }, [open])
+
+  function add(tag: string) {
+    const clean = tag.trim().toLowerCase().replace(/\s+/g, '-')
+    if (!clean || tags.includes(clean)) return
+    onChange([...tags, clean])
+    setInput('')
+    setOpen(false)
+  }
+
+  function remove(tag: string) {
+    onChange(tags.filter(t => t !== tag))
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1.5 items-center">
+      {tags.map(tag => (
+        <span
+          key={tag}
+          className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#111] border border-[#1e1e1e] text-[11px] text-[#888]"
+        >
+          {tag}
+          <button
+            onClick={() => remove(tag)}
+            className="text-[#333] hover:text-[#888] transition-colors leading-none ml-0.5"
+          >×</button>
+        </span>
+      ))}
+
+      {/* Add tag input */}
+      <div className="relative" ref={containerRef}>
+        <input
+          value={input}
+          onChange={e => { setInput(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { e.preventDefault(); add(input) }
+            if (e.key === 'Escape') { setOpen(false); setInput('') }
+          }}
+          placeholder="+ add tag"
+          className="bg-transparent border border-dashed border-[#222] rounded-full px-2.5 py-0.5 text-[11px] text-[#666] placeholder:text-[#333] focus:outline-none focus:border-[#444] w-20 focus:w-28 transition-all"
+        />
+        {open && (input || suggestions.length > 0) && (
+          <div className="absolute top-7 left-0 z-20 bg-[#141414] border border-[#252525] rounded-lg overflow-hidden min-w-[140px] shadow-xl">
+            {suggestions.length > 0 ? (
+              suggestions.slice(0, 8).map(s => (
+                <button
+                  key={s}
+                  onMouseDown={e => e.preventDefault()} // keep input focused
+                  onClick={() => add(s)}
+                  className="w-full text-left px-3 py-1.5 text-[11px] text-[#777] hover:text-[#ccc] hover:bg-[#1a1a1a] transition-colors"
+                >
+                  {s}
+                </button>
+              ))
+            ) : input.trim() ? (
+              <button
+                onMouseDown={e => e.preventDefault()}
+                onClick={() => add(input)}
+                className="w-full text-left px-3 py-1.5 text-[11px] text-[#555] hover:text-[#ccc] hover:bg-[#1a1a1a] transition-colors"
+              >
+                Create &ldquo;{input.trim().toLowerCase()}&rdquo;
+              </button>
+            ) : null}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+export default function PostDetail({
+  post, dupes, allTags,
+}: {
+  post: PostFull
+  dupes: DupeRow[]
+  allTags: string[]
+}) {
   const [score, setScore] = useState<number | null>(post.hook_score)
   const [isSunset, setIsSunset] = useState(post.is_sunset)
+  const [tags, setTags] = useState<string[]>(post.tags ?? [])
   const [, startTransition] = useTransition()
 
   function handleScore(n: number) {
@@ -25,6 +139,11 @@ export default function PostDetail({ post, dupes }: { post: PostFull; dupes: Dup
     const next = !isSunset
     setIsSunset(next)
     startTransition(() => toggleSunset(post.id, next))
+  }
+
+  function handleTagsChange(next: string[]) {
+    setTags(next)
+    startTransition(() => updatePostTags(post.id, next))
   }
 
   return (
@@ -44,9 +163,7 @@ export default function PostDetail({ post, dupes }: { post: PostFull; dupes: Dup
         <span>💬 {post.comments ?? 0}</span>
         <span>🔁 {post.reposts ?? 0}</span>
         {post.impressions > 0 && <span>👁 {post.impressions.toLocaleString()}</span>}
-        {isSunset && (
-          <span className="text-orange-400 text-[11px]">🌅 sunset</span>
-        )}
+        {isSunset && <span className="text-orange-400 text-[11px]">🌅 sunset</span>}
       </div>
 
       {/* Hook */}
@@ -62,6 +179,12 @@ export default function PostDetail({ post, dupes }: { post: PostFull; dupes: Dup
       )}
 
       <div className="border-t border-[#141414] pt-6 space-y-7">
+
+        {/* Tags */}
+        <div>
+          <p className="text-[10px] font-semibold text-[#444] uppercase tracking-widest mb-3">Tags</p>
+          <TagEditor tags={tags} allTags={allTags} onChange={handleTagsChange} />
+        </div>
 
         {/* Score */}
         <div>

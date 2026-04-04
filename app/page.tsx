@@ -13,6 +13,7 @@ export type Task = {
   last_completed_date: string | null // YYYY-MM-DD, tracks recurring completion
   completed: boolean               // used for non-recurring only
   category: string | null
+  task_type: string | null   // 'linkedin' | 'newsletter' | 'home' | null
   created_at: string
 }
 

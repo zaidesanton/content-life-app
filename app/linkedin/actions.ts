@@ -21,6 +21,16 @@ export async function toggleSunset(postId: string, value: boolean) {
   revalidatePath('/linkedin')
 }
 
+export async function updatePostTags(postId: string, tags: string[]) {
+  const { error } = await supabase
+    .from('linkedin_posts')
+    .update({ tags })
+    .eq('id', postId)
+  if (error) throw new Error(error.message)
+  revalidatePath('/linkedin')
+  revalidatePath(`/linkedin/${postId}`)
+}
+
 export async function fetchPostContent(postId: string): Promise<string | null> {
   const { data, error } = await supabase
     .from('linkedin_posts')

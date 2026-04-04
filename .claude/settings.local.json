@@ -30,7 +30,10 @@
       "Bash(curl -s http://localhost:56108/ --max-time 3 -o /dev/null -w \"%{http_code}\")",
       "mcp__Claude_Preview__preview_start",
       "Bash(curl -s http://localhost:54036/ -o /dev/null -w \"%{http_code}\")",
-      "mcp__2b7b102f-23a3-49f8-84d4-e71310e2e871__list_deployments"
+      "mcp__2b7b102f-23a3-49f8-84d4-e71310e2e871__list_deployments",
+      "mcp__73053cd9-14de-45c5-be99-f5e60645cf70__list_projects",
+      "mcp__2b7b102f-23a3-49f8-84d4-e71310e2e871__deploy_to_vercel",
+      "Bash(vercel deploy:*)"
     ]
   }
 }

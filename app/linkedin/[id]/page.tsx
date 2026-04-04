@@ -18,6 +18,7 @@ export type PostFull = {
   parent_id: string | null
   is_sunset: boolean
   post_url: string | null
+  tags: string[]
 }
 
 export type DupeRow = {
@@ -30,20 +31,34 @@ export type DupeRow = {
 export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
-  const { data: post, error } = await supabase
-    .from('linkedin_posts')
-    .select('id, hook, content, published_at, reactions, comments, reposts, impressions, hook_score, hook_alternatives, parent_id, is_sunset, post_url')
-    .eq('id', id)
-    .single()
+  const [{ data: post, error }, { data: dupes }, { data: tagRows }] = await Promise.all([
+    supabase
+      .from('linkedin_posts')
+      .select('id, hook, content, published_at, reactions, comments, reposts, impressions, hook_score, hook_alternatives, parent_id, is_sunset, post_url, tags')
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('linkedin_posts')
+      .select('id, published_at, impressions, post_url')
+      .eq('parent_id', id)
+      .order('published_at', { ascending: true }),
+    supabase
+      .from('linkedin_posts')
+      .select('tags'),
+  ])
 
   if (error || !post) notFound()
 
-  // Fetch duplicates (posts that reference this as parent)
-  const { data: dupes } = await supabase
-    .from('linkedin_posts')
-    .select('id, published_at, impressions, post_url')
-    .eq('parent_id', id)
-    .order('published_at', { ascending: true })
+  // Collect all distinct tags across all posts for autocomplete
+  const allTags = Array.from(
+    new Set((tagRows ?? []).flatMap(r => r.tags ?? []))
+  ).sort()
 
-  return <PostDetail post={post as PostFull} dupes={(dupes ?? []) as DupeRow[]} />
+  return (
+    <PostDetail
+      post={post as PostFull}
+      dupes={(dupes ?? []) as DupeRow[]}
+      allTags={allTags}
+    />
+  )
 }

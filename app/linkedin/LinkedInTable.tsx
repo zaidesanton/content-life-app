@@ -26,6 +26,7 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
   const [dateTo, setDateTo] = useState('')
   const [showSunset, setShowSunset] = useState(false)
   const [showDupes, setShowDupes] = useState(false)
+  const [tagFilter, setTagFilter] = useState<string | null>(null)
   const [sunsets, setSunsets] = useState<Record<string, boolean>>(
     Object.fromEntries(posts.map(p => [p.id, p.is_sunset]))
   )
@@ -45,19 +46,25 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
     return map
   }, [posts])
 
+  // All distinct tags from all posts, sorted
+  const allTags = useMemo(() =>
+    Array.from(new Set(posts.flatMap(p => p.tags ?? []))).sort()
+  , [posts])
+
   const visible = useMemo(() => {
     return posts.filter(p => {
       if (p.parent_id && !showDupes) return false
       if (sunsets[p.id] && !showSunset) return false
       if (dateFrom && p.published_at < dateFrom) return false
       if (dateTo && p.published_at > dateTo + 'T23:59:59') return false
+      if (tagFilter && !(p.tags ?? []).includes(tagFilter)) return false
       return true
     }).sort((a, b) => {
       const av = (a[sort.key] as number | string | null) ?? -1
       const bv = (b[sort.key] as number | string | null) ?? -1
       return sort.dir === 'asc' ? (av < bv ? -1 : 1) : (av > bv ? -1 : 1)
     })
-  }, [posts, sort, dateFrom, dateTo, showSunset, showDupes, sunsets])
+  }, [posts, sort, dateFrom, dateTo, showSunset, showDupes, sunsets, tagFilter])
 
   function toggleSort(key: SortKey) {
     setSort(s => s.key === key ? { key, dir: s.dir === 'desc' ? 'asc' : 'desc' } : { key, dir: 'desc' })
@@ -68,6 +75,11 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
     const next = !sunsets[postId]
     setSunsets(s => ({ ...s, [postId]: next }))
     startTransition(() => toggleSunset(postId, next))
+  }
+
+  function handleTagClick(e: React.MouseEvent, tag: string) {
+    e.stopPropagation()
+    setTagFilter(f => f === tag ? null : tag)
   }
 
   const sortCols: { key: SortKey; label: string }[] = [
@@ -117,20 +129,36 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
           <button
             onClick={() => setShowDupes(v => !v)}
             className={`px-3 py-1 rounded-md text-[11px] border transition-colors ${
-              showDupes
-                ? 'bg-[#141414] border-[#252525] text-[#777]'
-                : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666]'
+              showDupes ? 'bg-[#141414] border-[#252525] text-[#777]' : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#444] hover:text-[#777]'
             }`}
           >Show dupes</button>
           <button
             onClick={() => setShowSunset(v => !v)}
             className={`px-3 py-1 rounded-md text-[11px] border transition-colors ${
-              showSunset
-                ? 'bg-[#141414] border-[#252525] text-[#777]'
-                : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666]'
+              showSunset ? 'bg-[#141414] border-[#252525] text-[#777]' : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#444] hover:text-[#777]'
             }`}
           >Show sunset</button>
         </div>
+
+        {/* Tag filter chips */}
+        {allTags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2.5">
+            {allTags.map(tag => (
+              <button
+                key={tag}
+                onClick={() => setTagFilter(f => f === tag ? null : tag)}
+                className={`px-2.5 py-0.5 rounded-full text-[11px] border transition-colors ${
+                  tagFilter === tag
+                    ? 'bg-[#1a2a1a] border-[#2a4a2a] text-[#6a9a6a]'
+                    : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#444] hover:text-[#777] hover:border-[#2a2a2a]'
+                }`}
+              >
+                {tag}
+                {tagFilter === tag && <span className="ml-1 opacity-60">×</span>}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -155,6 +183,7 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
               const score = scores[post.id]
               const isSunset = sunsets[post.id]
               const dupeCount = childrenOf[post.id]?.length ?? 0
+              const tags = post.tags ?? []
 
               return (
                 <Fragment key={post.id}>
@@ -165,14 +194,33 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
                     }`}
                   >
                     <td className="px-3 py-[9px] max-w-0">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-[12px] text-[#bbb] truncate">
-                          {post.hook}
-                        </span>
-                        {dupeCount > 0 && (
-                          <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-[#0f1e32] text-[#3b7dd8]">
-                            ×{dupeCount + 1}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[12px] text-[#bbb] truncate">
+                            {post.hook}
                           </span>
+                          {dupeCount > 0 && (
+                            <span className="shrink-0 text-[9px] px-1.5 py-0.5 rounded-full bg-[#0f1e32] text-[#3b7dd8]">
+                              ×{dupeCount + 1}
+                            </span>
+                          )}
+                        </div>
+                        {tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {tags.map(tag => (
+                              <span
+                                key={tag}
+                                onClick={e => handleTagClick(e, tag)}
+                                className={`px-1.5 py-0 rounded text-[9px] border cursor-pointer transition-colors ${
+                                  tagFilter === tag
+                                    ? 'bg-[#1a2a1a] border-[#2a4a2a] text-[#6a9a6a]'
+                                    : 'bg-[#111] border-[#1a1a1a] text-[#444] hover:text-[#777] hover:border-[#2a2a2a]'
+                                }`}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
                         )}
                       </div>
                     </td>
