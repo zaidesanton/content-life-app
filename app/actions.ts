@@ -33,10 +33,26 @@ export async function updateTaskType(id: string, taskType: string | null) {
   revalidatePath('/')
 }
 
-export async function toggleTask(id: string, completed: boolean, isRecurring: boolean) {
+export async function toggleTask(
+  id: string,
+  completed: boolean,
+  isRecurring: boolean,
+  windowStart?: string,
+  windowEnd?: string,
+) {
   if (isRecurring) {
-    const last_completed_date = completed ? new Date().toISOString().slice(0, 10) : null
-    await supabase.from('tasks').update({ last_completed_date }).eq('id', id)
+    if (completed) {
+      const today = new Date().toISOString().slice(0, 10)
+      await supabase
+        .from('task_completions')
+        .upsert({ task_id: id, completed_date: today }, { onConflict: 'task_id,completed_date' })
+    } else {
+      // Delete all completions within the view's date window (today or current week)
+      let query = supabase.from('task_completions').delete().eq('task_id', id)
+      if (windowStart) query = query.gte('completed_date', windowStart)
+      if (windowEnd)   query = query.lte('completed_date', windowEnd)
+      await query
+    }
   } else {
     await supabase.from('tasks').update({ completed }).eq('id', id)
   }

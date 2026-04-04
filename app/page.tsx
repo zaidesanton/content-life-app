@@ -10,18 +10,27 @@ export type Task = {
   due_date: string | null          // YYYY-MM-DD, null for recurring
   is_recurring: boolean
   recurrence_day: number | null    // 0=Sun 1=Mon … 6=Sat, null if not recurring
-  last_completed_date: string | null // YYYY-MM-DD, tracks recurring completion
   completed: boolean               // used for non-recurring only
   category: string | null
-  task_type: string | null   // 'linkedin' | 'newsletter' | 'home' | null
+  task_type: string | null         // 'linkedin' | 'newsletter' | 'home' | null
   created_at: string
 }
 
-export default async function TasksPage() {
-  const { data } = await supabase
-    .from('tasks')
-    .select('*')
-    .order('created_at', { ascending: true })
+export type Completion = {
+  task_id: string
+  completed_date: string           // YYYY-MM-DD
+}
 
-  return <TasksView tasks={(data ?? []) as Task[]} />
+export default async function TasksPage() {
+  const [{ data: tasks }, { data: completions }] = await Promise.all([
+    supabase.from('tasks').select('*').order('created_at', { ascending: true }),
+    supabase.from('task_completions').select('task_id, completed_date'),
+  ])
+
+  return (
+    <TasksView
+      tasks={(tasks ?? []) as Task[]}
+      completions={(completions ?? []) as Completion[]}
+    />
+  )
 }

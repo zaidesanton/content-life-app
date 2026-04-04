@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
-import type { Task } from '@/app/page'
+import type { Task, Completion } from '@/app/page'
 import { createTask, toggleTask, deleteTask, updateTaskType } from '@/app/actions'
 import PageTabs from '@/components/PageTabs'
 
@@ -14,7 +14,6 @@ const VIEW_LABELS: Record<View, string> = {
   next_week: 'Next Week',
 }
 
-// 0=Sun 1=Mon … 6=Sat  — matches JS Date.getDay()
 const DAY_LABELS: { day: number; short: string }[] = [
   { day: 1, short: 'Mon' },
   { day: 2, short: 'Tue' },
@@ -70,7 +69,6 @@ function TypePicker({
 }: {
   current: string | null
   onChange: (t: TaskType | null) => void
-  /** inline=true renders the options directly (for use in forms) */
   inline?: boolean
 }) {
   const [open, setOpen] = useState(false)
@@ -86,9 +84,7 @@ function TypePicker({
           type="button"
           onClick={() => onChange(null)}
           className={`w-7 h-7 flex items-center justify-center rounded border transition-colors ${
-            !current
-              ? 'border-[#333] bg-[#1e1e1e] text-[#777]'
-              : 'border-[#1a1a1a] bg-[#0f0f0f] text-[#555] hover:text-[#777]'
+            !current ? 'border-[#333] bg-[#1e1e1e] text-[#777]' : 'border-[#1a1a1a] bg-[#0f0f0f] text-[#555] hover:text-[#777]'
           }`}
           title="No type"
         >
@@ -100,9 +96,7 @@ function TypePicker({
             type="button"
             onClick={() => onChange(t)}
             className={`w-7 h-7 flex items-center justify-center rounded border transition-colors ${
-              current === t
-                ? 'border-[#333] bg-[#1e1e1e] text-[#aaa]'
-                : 'border-[#1a1a1a] bg-[#0f0f0f] text-[#666] hover:text-[#999]'
+              current === t ? 'border-[#333] bg-[#1e1e1e] text-[#aaa]' : 'border-[#1a1a1a] bg-[#0f0f0f] text-[#666] hover:text-[#999]'
             }`}
             title={cfg.label}
           >
@@ -113,16 +107,11 @@ function TypePicker({
     )
   }
 
-  // Attach close listener AFTER the current event loop so the click that
-  // opened the popup doesn't immediately close it. Uses contains() to detect
-  // outside clicks — no stopPropagation needed, works reliably on mobile too.
   const containerRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return
     const close = (e: Event) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false)
     }
     const tid = setTimeout(() => {
       document.addEventListener('click', close)
@@ -147,7 +136,6 @@ function TypePicker({
       >
         {currentIcon}
       </button>
-
       {open && (
         <div className="absolute right-0 top-6 z-50 bg-[#1c1c1c] border border-[#333] rounded-lg p-2 flex gap-1.5 shadow-2xl">
           <button
@@ -189,7 +177,6 @@ function todayISO() {
   return toLocalDateStr(new Date())
 }
 
-/** Returns [monday, sunday] YYYY-MM-DD strings for the week offset weeks from now */
 function weekRange(offset = 0): [string, string] {
   const now = new Date()
   const mon = new Date(now)
@@ -198,6 +185,11 @@ function weekRange(offset = 0): [string, string] {
   const sun = new Date(mon)
   sun.setDate(mon.getDate() + 6)
   return [toLocalDateStr(mon), toLocalDateStr(sun)]
+}
+
+function viewWindow(view: View): [string, string] {
+  if (view === 'today') { const t = todayISO(); return [t, t] }
+  return weekRange(view === 'next_week' ? 1 : 0)
 }
 
 function defaultDueDate(view: View): string {
@@ -209,25 +201,34 @@ function viewSubtitle(view: View): string {
   if (view === 'today') {
     return new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
   }
-  if (view === 'this_week') {
-    const [s, e] = weekRange(0)
-    const fmt = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-    return `${fmt(s)} – ${fmt(e)}`
-  }
-  const [s, e] = weekRange(1)
+  const [s, e] = weekRange(view === 'next_week' ? 1 : 0)
   const fmt = (d: string) => new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
   return `${fmt(s)} – ${fmt(e)}`
 }
 
-function isTaskInView(task: Task, view: View): boolean {
+// ── Completion helpers ────────────────────────────────────────────────────────
+
+/** True if the task has a completion record within the view's date window */
+function isCompleted(task: Task, view: View, completions: Completion[]): boolean {
+  if (task.is_recurring) {
+    const [start, end] = viewWindow(view)
+    return completions.some(
+      c => c.task_id === task.id && c.completed_date >= start && c.completed_date <= end,
+    )
+  }
+  return task.completed
+}
+
+/** True if the task should appear in this view */
+function isTaskInView(task: Task, view: View, completions: Completion[]): boolean {
   const today = todayISO()
   const [thisStart, thisEnd] = weekRange(0)
   const [nextStart, nextEnd] = weekRange(1)
 
   if (task.is_recurring && task.recurrence_day !== null) {
-    const completedToday = task.last_completed_date === today
     if (view === 'today') {
-      return new Date().getDay() === task.recurrence_day && !completedToday
+      const doneToday = completions.some(c => c.task_id === task.id && c.completed_date === today)
+      return new Date().getDay() === task.recurrence_day && !doneToday
     }
     return true
   }
@@ -237,21 +238,6 @@ function isTaskInView(task: Task, view: View): boolean {
   if (view === 'today') return due === today
   if (view === 'this_week') return due >= thisStart && due <= thisEnd
   return due >= nextStart && due <= nextEnd
-}
-
-function isCompleted(task: Task, view: View): boolean {
-  if (task.is_recurring) {
-    if (!task.last_completed_date || task.recurrence_day === null) return false
-    const lcd = task.last_completed_date
-    if (view === 'today') return lcd === todayISO()
-    // For week views: completed if lcd falls anywhere on or after the start of that week.
-    // This lets you complete a task any day of the week (e.g. Saturday for a Sunday task)
-    // and still have it reset cleanly the following week.
-    const weekOffset = view === 'next_week' ? 1 : 0
-    const [weekStart] = weekRange(weekOffset)
-    return lcd >= weekStart
-  }
-  return task.completed
 }
 
 function recurringDateInWeek(recurrenceDay: number, weekOffset: number): Date {
@@ -271,8 +257,7 @@ function recurringDateLabel(recurrenceDay: number, weekOffset: number): string {
 function taskSortDate(task: Task, view: View): string {
   if (task.is_recurring && task.recurrence_day !== null) {
     if (view === 'today') return todayISO()
-    const weekOffset = view === 'next_week' ? 1 : 0
-    return toLocalDateStr(recurringDateInWeek(task.recurrence_day, weekOffset))
+    return toLocalDateStr(recurringDateInWeek(task.recurrence_day, view === 'next_week' ? 1 : 0))
   }
   return task.due_date ?? '9999-12-31'
 }
@@ -280,10 +265,11 @@ function taskSortDate(task: Task, view: View): string {
 // ── Bucket ────────────────────────────────────────────────────────────────────
 
 function Bucket({
-  title, tasks, onToggle, onDelete, onTypeChange, completing, view,
+  title, tasks, completions, onToggle, onDelete, onTypeChange, completing, view,
 }: {
   title: string
   tasks: Task[]
+  completions: Completion[]
   onToggle: (t: Task) => void
   onDelete: (t: Task) => void
   onTypeChange: (t: Task, type: TaskType | null) => void
@@ -292,14 +278,12 @@ function Bucket({
 }) {
   const sorted = useMemo(() => {
     return [...tasks].sort((a, b) => {
-      const aDone = isCompleted(a, view) && !completing.has(a.id) ? 1 : 0
-      const bDone = isCompleted(b, view) && !completing.has(b.id) ? 1 : 0
+      const aDone = isCompleted(a, view, completions) && !completing.has(a.id) ? 1 : 0
+      const bDone = isCompleted(b, view, completions) && !completing.has(b.id) ? 1 : 0
       if (aDone !== bDone) return aDone - bDone
-      const aDate = taskSortDate(a, view)
-      const bDate = taskSortDate(b, view)
-      return aDate < bDate ? -1 : aDate > bDate ? 1 : 0
+      return taskSortDate(a, view) < taskSortDate(b, view) ? -1 : 1
     })
-  }, [tasks, view, completing])
+  }, [tasks, view, completing, completions])
 
   if (sorted.length === 0) return null
 
@@ -308,17 +292,12 @@ function Bucket({
       <p className="text-[10px] font-semibold text-[#999] uppercase tracking-[.08em] mb-2.5">{title}</p>
       <div className="divide-y divide-[#0f0f0f]">
         {sorted.map(task => {
-          const done = isCompleted(task, view)
+          const done = isCompleted(task, view, completions)
           const isAnimating = completing.has(task.id)
 
           let dateLabel = ''
           if (task.is_recurring && task.recurrence_day !== null) {
-            if (view === 'today') {
-              dateLabel = 'weekly'
-            } else {
-              const weekOffset = view === 'next_week' ? 1 : 0
-              dateLabel = recurringDateLabel(task.recurrence_day, weekOffset)
-            }
+            dateLabel = view === 'today' ? 'weekly' : recurringDateLabel(task.recurrence_day, view === 'next_week' ? 1 : 0)
           } else if (task.due_date) {
             dateLabel = new Date(task.due_date + 'T12:00:00')
               .toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
@@ -327,11 +306,8 @@ function Bucket({
           return (
             <div
               key={task.id}
-              className={`group flex items-center gap-2.5 py-2 transition-all duration-500 ${
-                isAnimating ? 'opacity-0 translate-y-1' : ''
-              }`}
+              className={`group flex items-center gap-2.5 py-2 transition-all duration-500 ${isAnimating ? 'opacity-0 translate-y-1' : ''}`}
             >
-              {/* Completion toggle */}
               <button
                 onClick={() => onToggle(task)}
                 className={`w-[15px] h-[15px] rounded-full border flex items-center justify-center shrink-0 transition-colors ${
@@ -341,37 +317,28 @@ function Bucket({
                 {done && <span className="text-[8px] text-[#555]">✓</span>}
               </button>
 
-              {/* Title */}
               <span className={`text-[13px] flex-1 transition-colors duration-200 ${done ? 'line-through text-[#666]' : 'text-[#d4d4d4]'}`}>
                 {task.title}
               </span>
 
-              {/* Date label */}
               {dateLabel && (
                 <span className={`text-[11px] tabular-nums shrink-0 ${done ? 'text-[#555]' : 'text-[#999]'}`}>
                   {dateLabel}
                 </span>
               )}
 
-              {/* Type icon */}
-              <TypePicker
-                current={task.task_type}
-                onChange={type => onTypeChange(task, type)}
-              />
+              <TypePicker current={task.task_type} onChange={type => onTypeChange(task, type)} />
 
-              {/* Recurring indicator */}
               {task.is_recurring && view !== 'today' && (
                 <span className={`text-[11px] shrink-0 leading-none ${done ? 'opacity-40' : 'opacity-70'}`}>🔁</span>
               )}
 
-              {/* Category badge */}
               {task.category && (
                 <span className="text-[10px] text-[#666] border border-[#222] rounded-full px-1.5 py-0.5 shrink-0">
                   {task.category}
                 </span>
               )}
 
-              {/* Delete */}
               <button
                 onClick={() => onDelete(task)}
                 className="text-[#444] hover:text-[#999] transition-colors shrink-0 px-1"
@@ -391,13 +358,16 @@ function Bucket({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function TasksView({ tasks }: { tasks: Task[] }) {
+export default function TasksView({ tasks, completions: initialCompletions }: {
+  tasks: Task[]
+  completions: Completion[]
+}) {
   const [view, setView] = useState<View>('today')
   const [localTasks, setLocalTasks] = useState<Task[]>(tasks)
+  const [completions, setCompletions] = useState<Completion[]>(initialCompletions)
   const [completing, setCompleting] = useState<Set<string>>(new Set())
   const [, startTransition] = useTransition()
 
-  // Add-task form state
   const [addTitle, setAddTitle] = useState('')
   const [isRecurring, setIsRecurring] = useState(false)
   const [recurDay, setRecurDay] = useState<number>(1)
@@ -410,10 +380,10 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
     if (!isRecurring) setDueDate(defaultDueDate(v))
   }
 
-  const viewTasks = localTasks.filter(t => isTaskInView(t, view))
+  const viewTasks = localTasks.filter(t => isTaskInView(t, view, completions))
   const mustDo = viewTasks.filter(t => t.bucket === 'must_do')
   const niceTo = viewTasks.filter(t => t.bucket === 'nice_to_have')
-  const nextWeekCount = localTasks.filter(t => isTaskInView(t, 'next_week')).length
+  const nextWeekCount = localTasks.filter(t => isTaskInView(t, 'next_week', completions)).length
 
   function handleDelete(task: Task) {
     if (task.is_recurring) {
@@ -424,27 +394,33 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
   }
 
   function handleToggle(task: Task) {
-    const done = isCompleted(task, view)
+    const done = isCompleted(task, view, completions)
     const next = !done
+    const today = todayISO()
+    const [windowStart, windowEnd] = viewWindow(view)
 
-    setLocalTasks(ts => ts.map(t => {
-      if (t.id !== task.id) return t
-      if (task.is_recurring) return { ...t, last_completed_date: next ? todayISO() : null }
-      return { ...t, completed: next }
-    }))
+    if (task.is_recurring) {
+      if (next) {
+        // Record actual completion date
+        setCompletions(cs => [...cs, { task_id: task.id, completed_date: today }])
+      } else {
+        // Remove any completion in the view's window
+        setCompletions(cs =>
+          cs.filter(c => !(c.task_id === task.id && c.completed_date >= windowStart && c.completed_date <= windowEnd))
+        )
+      }
+      startTransition(() => toggleTask(task.id, next, true, windowStart, windowEnd))
+    } else {
+      setLocalTasks(ts => ts.map(t => t.id === task.id ? { ...t, completed: next } : t))
+      startTransition(() => toggleTask(task.id, next, false))
+    }
 
     if (next) {
       setCompleting(s => new Set([...s, task.id]))
       setTimeout(() => {
-        setCompleting(s => {
-          const n = new Set(s)
-          n.delete(task.id)
-          return n
-        })
+        setCompleting(s => { const n = new Set(s); n.delete(task.id); return n })
       }, 500)
     }
-
-    startTransition(() => toggleTask(task.id, next, task.is_recurring))
   }
 
   function handleTypeChange(task: Task, type: TaskType | null) {
@@ -461,11 +437,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
     fd.set('title', title)
     fd.set('bucket', bucket)
     fd.set('is_recurring', isRecurring ? 'true' : 'false')
-    if (isRecurring) {
-      fd.set('recurrence_day', String(recurDay))
-    } else {
-      fd.set('due_date', dueDate)
-    }
+    if (isRecurring) fd.set('recurrence_day', String(recurDay))
+    else fd.set('due_date', dueDate)
     if (newTaskType) fd.set('task_type', newTaskType)
 
     const newTask: Task = {
@@ -475,7 +448,6 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
       due_date: isRecurring ? null : dueDate,
       is_recurring: isRecurring,
       recurrence_day: isRecurring ? recurDay : null,
-      last_completed_date: null,
       completed: false,
       category: null,
       task_type: newTaskType,
@@ -489,13 +461,12 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
 
   return (
     <div className="flex flex-col min-h-full">
-      {/* Page tabs */}
       <div className="border-b border-[#141414]">
         <PageTabs
           tabs={[
-            { key: 'today',     label: 'Today'     },
-            { key: 'this_week', label: 'This Week'  },
-            { key: 'next_week', label: 'Next Week'  },
+            { key: 'today',     label: 'Today'    },
+            { key: 'this_week', label: 'This Week' },
+            { key: 'next_week', label: 'Next Week' },
           ]}
           active={view}
           onChange={k => switchView(k as View)}
@@ -503,91 +474,75 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
       </div>
 
       <div className="px-6 md:px-8 pt-4 pb-6 max-w-xl">
-      <p suppressHydrationWarning className="text-[12px] text-[#aaa] mb-5">{viewSubtitle(view)}</p>
+        <p suppressHydrationWarning className="text-[12px] text-[#aaa] mb-5">{viewSubtitle(view)}</p>
 
-      {/* Add task form — only in Today view */}
-      {view !== 'today' ? null : <form onSubmit={handleAdd} className="mb-7 space-y-2">
-        <input
-          value={addTitle}
-          onChange={e => setAddTitle(e.target.value)}
-          placeholder="Add a task…"
-          autoComplete="off"
-          className="w-full bg-[#111] border border-[#252525] rounded-lg px-3 py-2.5 text-[13px] text-[#ccc] placeholder:text-[#444] focus:outline-none focus:border-[#333]"
-        />
-
-        <div className="flex items-center gap-2 flex-wrap">
-
-          {/* Due date OR day picker */}
-          {isRecurring ? (
-            <div className="flex gap-1">
-              {DAY_LABELS.map(({ day, short }) => (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => setRecurDay(day)}
-                  className={`px-2 py-1 rounded text-[11px] border transition-colors ${
-                    recurDay === day
-                      ? 'bg-[#1e1e1e] border-[#333] text-[#ccc]'
-                      : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666] hover:text-[#999]'
-                  }`}
-                >{short}</button>
-              ))}
-            </div>
-          ) : (
+        {/* Add task form — today only */}
+        {view === 'today' && (
+          <form onSubmit={handleAdd} className="mb-7 space-y-2">
             <input
-              type="date"
-              value={dueDate}
-              onChange={e => setDueDate(e.target.value)}
-              className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-md px-2 py-1 text-[11px] text-[#777] focus:outline-none focus:border-[#333]"
+              value={addTitle}
+              onChange={e => setAddTitle(e.target.value)}
+              placeholder="Add a task…"
+              autoComplete="off"
+              className="w-full bg-[#111] border border-[#252525] rounded-lg px-3 py-2.5 text-[13px] text-[#ccc] placeholder:text-[#444] focus:outline-none focus:border-[#333]"
             />
-          )}
+            <div className="flex items-center gap-2 flex-wrap">
+              {isRecurring ? (
+                <div className="flex gap-1">
+                  {DAY_LABELS.map(({ day, short }) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => setRecurDay(day)}
+                      className={`px-2 py-1 rounded text-[11px] border transition-colors ${
+                        recurDay === day ? 'bg-[#1e1e1e] border-[#333] text-[#ccc]' : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666] hover:text-[#999]'
+                      }`}
+                    >{short}</button>
+                  ))}
+                </div>
+              ) : (
+                <input
+                  type="date"
+                  value={dueDate}
+                  onChange={e => setDueDate(e.target.value)}
+                  className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-md px-2 py-1 text-[11px] text-[#777] focus:outline-none focus:border-[#333]"
+                />
+              )}
+              <TypePicker inline current={newTaskType} onChange={t => setNewTaskType(t)} />
+              <button
+                type="button"
+                onClick={() => setIsRecurring(v => !v)}
+                className={`px-2.5 py-1 rounded-md text-[11px] border transition-colors ${
+                  isRecurring ? 'bg-[#1e1e1e] border-[#333] text-[#aaa]' : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666] hover:text-[#999]'
+                }`}
+              >🔁 Recurring</button>
+              <button
+                type="button"
+                onClick={() => setBucket(b => b === 'must_do' ? 'nice_to_have' : 'must_do')}
+                className="px-2.5 py-1 rounded-md text-[11px] border border-[#1a1a1a] bg-[#0f0f0f] text-[#666] hover:text-[#999] transition-colors"
+              >
+                {bucket === 'must_do' ? '★ Must Do' : '◇ Nice to Have'}
+              </button>
+              <button
+                type="submit"
+                className="ml-auto bg-[#1e1e1e] border border-[#2a2a2a] text-[#ccc] rounded-lg px-3 py-1.5 text-[12px] hover:bg-[#242424] transition-colors"
+              >+ Add</button>
+            </div>
+          </form>
+        )}
 
-          {/* Task type picker */}
-          <TypePicker inline current={newTaskType} onChange={t => setNewTaskType(t)} />
+        <Bucket title="Must Do"      tasks={mustDo} completions={completions} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
+        <Bucket title="Nice to Have" tasks={niceTo} completions={completions} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
 
-          {/* Recurring toggle */}
+        {view !== 'next_week' && (
           <button
-            type="button"
-            onClick={() => setIsRecurring(v => !v)}
-            className={`px-2.5 py-1 rounded-md text-[11px] border transition-colors ${
-              isRecurring
-                ? 'bg-[#1e1e1e] border-[#333] text-[#aaa]'
-                : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666] hover:text-[#999]'
-            }`}
-          >🔁 Recurring</button>
-
-          {/* Bucket toggle */}
-          <button
-            type="button"
-            onClick={() => setBucket(b => b === 'must_do' ? 'nice_to_have' : 'must_do')}
-            className="px-2.5 py-1 rounded-md text-[11px] border border-[#1a1a1a] bg-[#0f0f0f] text-[#666] hover:text-[#999] transition-colors"
+            onClick={() => switchView('next_week')}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 bg-[#0d0d0d] border border-[#141414] rounded-lg mt-2 text-left"
           >
-            {bucket === 'must_do' ? '★ Must Do' : '◇ Nice to Have'}
+            <span className="text-[12px] text-[#aaa]">Next Week</span>
+            <span className="text-[12px] text-[#999]">{nextWeekCount} tasks ›</span>
           </button>
-
-          <button
-            type="submit"
-            className="ml-auto bg-[#1e1e1e] border border-[#2a2a2a] text-[#ccc] rounded-lg px-3 py-1.5 text-[12px] hover:bg-[#242424] transition-colors"
-          >
-            + Add
-          </button>
-        </div>
-      </form>}
-
-      {/* Buckets */}
-      <Bucket title="Must Do"       tasks={mustDo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
-      <Bucket title="Nice to Have"  tasks={niceTo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
-
-      {/* Next week collapsed row */}
-      {view !== 'next_week' && (
-        <button
-          onClick={() => switchView('next_week')}
-          className="w-full flex items-center justify-between px-3.5 py-2.5 bg-[#0d0d0d] border border-[#141414] rounded-lg mt-2 text-left"
-        >
-          <span className="text-[12px] text-[#aaa]">Next Week</span>
-          <span className="text-[12px] text-[#999]">{nextWeekCount} tasks ›</span>
-        </button>
-      )}
+        )}
       </div>
     </div>
   )
