@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from 'react'
 
 const NAV = [
   { href: '/',            icon: '✓',  label: 'Tasks'      },
+  { href: '/diary',       icon: '◑',  label: 'Diary'      },
   { href: '/newsletter',  icon: '✉',  label: 'Newsletter' },
   { href: '/linkedin',    icon: 'in', label: 'LinkedIn'   },
   { href: '/capture',     icon: '⚡', label: 'Capture'    },
@@ -56,7 +57,7 @@ export default function Sidebar() {
                 key={href}
                 href={href}
                 className={`flex items-center gap-2.5 px-5 py-[9px] text-[13px] transition-colors ${
-                  active ? 'text-white' : 'text-[#444] hover:text-[#888]'
+                  active ? 'text-white' : 'text-[#666] hover:text-[#aaa]'
                 }`}
               >
                 <span className="w-4 text-center text-[14px] leading-none">{icon}</span>

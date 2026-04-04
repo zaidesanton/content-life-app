@@ -514,7 +514,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
           onChange={e => setAddTitle(e.target.value)}
           placeholder="Add a task…"
           autoComplete="off"
-          className="w-full bg-[#111] border border-[#1a1a1a] rounded-lg px-3 py-2.5 text-[13px] text-[#ccc] placeholder:text-[#2e2e2e] focus:outline-none focus:border-[#2a2a2a]"
+          className="w-full bg-[#111] border border-[#252525] rounded-lg px-3 py-2.5 text-[13px] text-[#ccc] placeholder:text-[#444] focus:outline-none focus:border-[#333]"
         />
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -593,3 +593,4 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
     </div>
   )
 }
+      
