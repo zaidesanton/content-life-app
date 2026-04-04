@@ -387,6 +387,9 @@ function Bucket({
   )
 }
 
+// ── Module-level flag — survives React re-mounts, resets on full page reload ──
+let _todayAllDone = false
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function TasksView({ tasks }: { tasks: Task[] }) {
@@ -396,10 +399,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
   const [burstActive, setBurstActive] = useState(false)
   const [, startTransition] = useTransition()
 
-  const todayDoneKey = 'tasks-done-' + todayISO()
-  const [doneForSession, setDoneForSession] = useState(() =>
-    typeof window !== 'undefined' && sessionStorage.getItem(todayDoneKey) === '1'
-  )
+  const [doneForSession, setDoneForSession] = useState(() => _todayAllDone)
 
   const [addTitle, setAddTitle] = useState('')
   const [formExpanded, setFormExpanded] = useState(false)
@@ -455,9 +455,9 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
       if (willBeAllDone) {
         // Sequence: task exit (500ms) → burst (900ms) → rest image fades in
         setTimeout(() => {
+          _todayAllDone = true
           setBurstActive(true)
           setDoneForSession(true)
-          sessionStorage.setItem(todayDoneKey, '1')
           setCompleting(s => { const n = new Set(s); n.delete(String(task.id)); return n })
           setTimeout(() => setBurstActive(false), 900)
         }, 500)
@@ -530,8 +530,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
           {burstActive && <BurstParticles />}
           <div className={`transition-opacity duration-300 ${burstActive ? 'opacity-0' : 'opacity-100'}`}>
 
-            {/* Add task form — today only, hidden once day is complete */}
-            {view === 'today' && !doneForSession && (
+            {/* Add task form — today only, hidden when all done */}
+            {view === 'today' && !showRest && (
               <form onSubmit={handleAdd} className="mb-7 space-y-2">
                 <input
                   value={addTitle}
