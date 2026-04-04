@@ -35,7 +35,9 @@ export async function createDraft(hook: string) {
   const { error } = await supabase
     .from('linkedin_posts')
     .insert({
+      id: crypto.randomUUID(),
       hook,
+      content: '',
       status: 'draft',
       published_at: new Date().toISOString(),
       reactions: 0,

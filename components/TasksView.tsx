@@ -427,9 +427,19 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
     const done = isCompleted(task, view)
     const next = !done
 
+    // For recurring tasks in week views, use the occurrence date so that
+    // isCompleted (which checks lcd >= occurrence) correctly reflects the state.
+    // Using today's date would fail when today < occurrence (e.g. completing
+    // a Sunday task on Saturday).
+    let completionDate = todayISO()
+    if (task.is_recurring && task.recurrence_day !== null && view !== 'today') {
+      const weekOffset = view === 'next_week' ? 1 : 0
+      completionDate = toLocalDateStr(recurringDateInWeek(task.recurrence_day, weekOffset))
+    }
+
     setLocalTasks(ts => ts.map(t => {
       if (t.id !== task.id) return t
-      if (task.is_recurring) return { ...t, last_completed_date: next ? todayISO() : null }
+      if (task.is_recurring) return { ...t, last_completed_date: next ? completionDate : null }
       return { ...t, completed: next }
     }))
 
@@ -444,7 +454,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
       }, 500)
     }
 
-    startTransition(() => toggleTask(task.id, next, task.is_recurring))
+    startTransition(() => toggleTask(task.id, next, task.is_recurring, completionDate))
   }
 
   function handleTypeChange(task: Task, type: TaskType | null) {
