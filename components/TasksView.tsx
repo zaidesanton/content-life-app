@@ -3,6 +3,7 @@
 import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
 import type { Task } from '@/app/page'
 import { createTask, toggleTask, deleteTask, updateTaskType } from '@/app/actions'
+import PageTabs from '@/components/PageTabs'
 
 type View = 'today' | 'this_week' | 'next_week'
 type TaskType = 'linkedin' | 'newsletter' | 'home'
@@ -487,25 +488,24 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
   }
 
   return (
-    <div className="px-6 md:px-8 pt-8 pb-6 max-w-xl">
+    <div className="flex flex-col min-h-full">
+      {/* Page tabs */}
+      <div className="border-b border-[#141414]">
+        <PageTabs
+          tabs={[
+            { key: 'today',     label: 'Today'     },
+            { key: 'this_week', label: 'This Week'  },
+            { key: 'next_week', label: 'Next Week'  },
+          ]}
+          active={view}
+          onChange={k => switchView(k as View)}
+        />
+      </div>
+
+      <div className="px-6 md:px-8 pt-6 pb-6 max-w-xl">
       {/* Title */}
       <h1 className="text-[20px] font-semibold text-white mb-1">{VIEW_LABELS[view]}</h1>
       <p suppressHydrationWarning className="text-[12px] text-[#aaa] mb-5">{viewSubtitle(view)}</p>
-
-      {/* View toggle */}
-      <div className="inline-flex bg-[#111] border border-[#1a1a1a] rounded-md mb-6">
-        {(['today', 'this_week', 'next_week'] as View[]).map(v => (
-          <button
-            key={v}
-            onClick={() => switchView(v)}
-            className={`px-3.5 py-1.5 text-[12px] rounded-[5px] transition-colors ${
-              view === v ? 'bg-[#1e1e1e] text-white' : 'text-[#999] hover:text-white'
-            }`}
-          >
-            {VIEW_LABELS[v]}
-          </button>
-        ))}
-      </div>
 
       {/* Add task form — only in Today view */}
       {view !== 'today' ? null : <form onSubmit={handleAdd} className="mb-7 space-y-2">
@@ -590,6 +590,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
           <span className="text-[12px] text-[#999]">{nextWeekCount} tasks ›</span>
         </button>
       )}
+      </div>
     </div>
   )
 }

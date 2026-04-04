@@ -17,12 +17,13 @@ export type PostRow = {
   is_sunset: boolean
   post_url: string | null
   tags: string[]
+  status: string
 }
 
 export default async function LinkedInPage() {
   const { data, error } = await supabase
     .from('linkedin_posts')
-    .select('id, hook, published_at, reactions, comments, reposts, impressions, hook_score, hook_alternatives, parent_id, is_sunset, post_url, tags')
+    .select('id, hook, published_at, reactions, comments, reposts, impressions, hook_score, hook_alternatives, parent_id, is_sunset, post_url, tags, status')
     .order('published_at', { ascending: false })
 
   if (error) {
