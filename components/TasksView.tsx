@@ -396,6 +396,11 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
   const [burstActive, setBurstActive] = useState(false)
   const [, startTransition] = useTransition()
 
+  const todayDoneKey = 'tasks-done-' + todayISO()
+  const [doneForSession, setDoneForSession] = useState(() =>
+    typeof window !== 'undefined' && sessionStorage.getItem(todayDoneKey) === '1'
+  )
+
   const [addTitle, setAddTitle] = useState('')
   const [formExpanded, setFormExpanded] = useState(false)
   const [isRecurring, setIsRecurring] = useState(false)
@@ -417,7 +422,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
 
   // Show rest image when all tasks in view are done (and no completing animation / burst running)
   const allViewDone = viewTasks.every(t => isCompleted(t))
-  const showRest = allViewDone && completing.size === 0 && !burstActive
+  const showRest = doneForSession || (allViewDone && completing.size === 0 && !burstActive)
 
   function handleDelete(task: Task) {
     if (task.recurring_task_id) {
@@ -451,6 +456,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
         // Sequence: task exit (500ms) → burst (900ms) → rest image fades in
         setTimeout(() => {
           setBurstActive(true)
+          setDoneForSession(true)
+          sessionStorage.setItem(todayDoneKey, '1')
           setCompleting(s => { const n = new Set(s); n.delete(String(task.id)); return n })
           setTimeout(() => setBurstActive(false), 900)
         }, 500)
@@ -523,8 +530,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
           {burstActive && <BurstParticles />}
           <div className={`transition-opacity duration-300 ${burstActive ? 'opacity-0' : 'opacity-100'}`}>
 
-            {/* Add task form — today only */}
-            {view === 'today' && (
+            {/* Add task form — today only, hidden once day is complete */}
+            {view === 'today' && !doneForSession && (
               <form onSubmit={handleAdd} className="mb-7 space-y-2">
                 <input
                   value={addTitle}
