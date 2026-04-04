@@ -198,6 +198,93 @@ function isTaskInView(task: Task, view: View): boolean {
   return task.due_date >= start && task.due_date <= end
 }
 
+// ── Burst + All-Done ──────────────────────────────────────────────────────────
+
+const BURST_COLORS = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#c77dff', '#ff9f43', '#ff6bff', '#06d6a0', '#fb923c', '#38bdf8']
+
+function BurstParticles() {
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+
+    const count = 48
+    const particles = Array.from({ length: count }, (_, i) => {
+      const angle = (360 / count) * i + (Math.random() * 14 - 7)
+      const dist = 90 + Math.random() * 160
+      const tx = Math.cos((angle * Math.PI) / 180) * dist
+      const ty = Math.sin((angle * Math.PI) / 180) * dist - 40
+      const size = 5 + Math.random() * 9
+      const isCircle = i % 3 !== 0
+
+      const p = document.createElement('div')
+      p.style.cssText = `
+        position:absolute; left:50%; top:50%;
+        width:${size}px; height:${isCircle ? size : size * 0.5}px;
+        background:${BURST_COLORS[i % BURST_COLORS.length]};
+        border-radius:${isCircle ? '50%' : '2px'};
+        opacity:0;
+      `
+      el.appendChild(p)
+      return { p, tx, ty }
+    })
+
+    particles.forEach(({ p, tx, ty }, i) => {
+      const delay = Math.random() * 180
+      const dur = 650 + Math.random() * 350
+      setTimeout(() => {
+        p.animate(
+          [
+            { transform: 'translate(-50%,-50%) scale(0)', opacity: 1 },
+            { transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0.15)`, opacity: 0 },
+          ],
+          { duration: dur, easing: 'cubic-bezier(0.2,0.8,0.4,1)', fill: 'forwards' }
+        )
+      }, delay)
+    })
+
+    return () => { particles.forEach(({ p }) => { try { p.remove() } catch {} }) }
+  }, [])
+
+  return (
+    <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 20 }}>
+      {/* Expanding ring at center */}
+      <div style={{
+        position: 'absolute', left: '50%', top: '50%',
+        width: 56, height: 56, marginLeft: -28, marginTop: -28,
+        border: '3px solid rgba(255,255,255,0.65)',
+        borderRadius: '50%',
+        animation: 'pulseRingOut 0.65s ease-out forwards',
+      }} />
+      {/* Second ring, slightly delayed */}
+      <div style={{
+        position: 'absolute', left: '50%', top: '50%',
+        width: 56, height: 56, marginLeft: -28, marginTop: -28,
+        border: '2px solid rgba(255,220,100,0.5)',
+        borderRadius: '50%',
+        animation: 'pulseRingOut 0.65s ease-out 120ms forwards',
+      }} />
+      <div ref={containerRef} className="absolute inset-0" />
+    </div>
+  )
+}
+
+function AllDoneScreen() {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 px-6">
+      <img
+        src="/all-done.jpg"
+        alt="You are all done. Rest."
+        className="w-full max-w-xs rounded-2xl shadow-2xl"
+        style={{ animation: 'restImageIn 0.9s cubic-bezier(0.22,1,0.36,1) forwards' }}
+      />
+    </div>
+  )
+}
+
+// ── Day labels ────────────────────────────────────────────────────────────────
+
 const DAY_LABELS: { day: number; short: string }[] = [
   { day: 1, short: 'Mon' },
   { day: 2, short: 'Tue' },
@@ -306,6 +393,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
   const [view, setView] = useState<View>('today')
   const [localTasks, setLocalTasks] = useState<Task[]>(tasks)
   const [completing, setCompleting] = useState<Set<string>>(new Set())
+  const [burstActive, setBurstActive] = useState(false)
   const [, startTransition] = useTransition()
 
   const [addTitle, setAddTitle] = useState('')
@@ -317,6 +405,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
 
   function switchView(v: View) {
     setView(v)
+    setBurstActive(false)
     if (!isRecurring) setDueDate(defaultDueDate(v))
   }
 
@@ -324,6 +413,10 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
   const mustDo = viewTasks.filter(t => t.bucket === 'must_do')
   const niceTo = viewTasks.filter(t => t.bucket === 'nice_to_have')
   const nextWeekCount = localTasks.filter(t => isTaskInView(t, 'next_week')).length
+
+  // Show rest image when all tasks in view are done (and no completing animation / burst running)
+  const allViewDone = viewTasks.every(t => isCompleted(t))
+  const showRest = allViewDone && completing.size === 0 && !burstActive
 
   function handleDelete(task: Task) {
     if (task.recurring_task_id) {
@@ -340,16 +433,34 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
     const next = !isCompleted(task)
     const today = todayISO()
 
-    setLocalTasks(ts =>
-      ts.map(t => t.id === task.id ? { ...t, completed_date: next ? today : null } : t)
+    const updatedTasks = localTasks.map(t =>
+      t.id === task.id ? { ...t, completed_date: next ? today : null } : t
     )
+    setLocalTasks(updatedTasks)
     startTransition(() => toggleTask(String(task.id), next))
 
     if (next) {
       setCompleting(s => new Set([...s, String(task.id)]))
-      setTimeout(() => {
-        setCompleting(s => { const n = new Set(s); n.delete(String(task.id)); return n })
-      }, 500)
+
+      // Detect if this was the last incomplete task in view
+      const vt = updatedTasks.filter(t => isTaskInView(t, view))
+      const willBeAllDone = vt.every(t => isCompleted(t))
+
+      if (willBeAllDone) {
+        // Sequence: task exit (500ms) → burst (900ms) → rest image fades in
+        setTimeout(() => {
+          setBurstActive(true)
+          setCompleting(s => { const n = new Set(s); n.delete(String(task.id)); return n })
+          setTimeout(() => setBurstActive(false), 900)
+        }, 500)
+      } else {
+        setTimeout(() => {
+          setCompleting(s => { const n = new Set(s); n.delete(String(task.id)); return n })
+        }, 500)
+      }
+    } else {
+      // Un-completing hides the rest image immediately
+      setBurstActive(false)
     }
   }
 
@@ -462,10 +573,19 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
           </form>
         )}
 
-        <Bucket title="Must Do"      tasks={mustDo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
-        <Bucket title="Nice to Have" tasks={niceTo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
+        {showRest ? (
+          <AllDoneScreen />
+        ) : (
+          <div className="relative">
+            {burstActive && <BurstParticles />}
+            <div className={`transition-opacity duration-300 ${burstActive ? 'opacity-0' : 'opacity-100'}`}>
+              <Bucket title="Must Do"      tasks={mustDo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
+              <Bucket title="Nice to Have" tasks={niceTo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
+            </div>
+          </div>
+        )}
 
-        {view !== 'next_week' && (
+        {view !== 'next_week' && !showRest && (
           <button
             onClick={() => switchView('next_week')}
             className="w-full flex items-center justify-between px-3.5 py-2.5 bg-[#0d0d0d] border border-[#141414] rounded-lg mt-2 text-left"
