@@ -397,6 +397,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
   const [, startTransition] = useTransition()
 
   const [addTitle, setAddTitle] = useState('')
+  const [formExpanded, setFormExpanded] = useState(false)
   const [isRecurring, setIsRecurring] = useState(false)
   const [recurDay, setRecurDay] = useState<number>(1)
   const [dueDate, setDueDate] = useState(defaultDueDate('today'))
@@ -518,82 +519,89 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
       <div className="px-6 md:px-8 pt-4 pb-6 max-w-xl">
         <p suppressHydrationWarning className="text-[12px] text-[#aaa] mb-5">{viewSubtitle(view)}</p>
 
-        {/* Add task form — today only */}
-        {view === 'today' && (
-          <form onSubmit={handleAdd} className="mb-7 space-y-2">
-            <input
-              value={addTitle}
-              onChange={e => setAddTitle(e.target.value)}
-              placeholder="Add a task…"
-              autoComplete="off"
-              className="w-full bg-[#111] border border-[#252525] rounded-lg px-3 py-2.5 text-[13px] text-[#ccc] placeholder:text-[#444] focus:outline-none focus:border-[#333]"
-            />
-            <div className="flex items-center gap-2 flex-wrap">
-              {isRecurring ? (
-                <div className="flex gap-1">
-                  {DAY_LABELS.map(({ day, short }) => (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => setRecurDay(day)}
-                      className={`px-2 py-1 rounded text-[11px] border transition-colors ${
-                        recurDay === day ? 'bg-[#1e1e1e] border-[#333] text-[#ccc]' : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666] hover:text-[#999]'
-                      }`}
-                    >{short}</button>
-                  ))}
-                </div>
-              ) : (
+        <div className="relative">
+          {burstActive && <BurstParticles />}
+          <div className={`transition-opacity duration-300 ${burstActive ? 'opacity-0' : 'opacity-100'}`}>
+
+            {/* Add task form — today only */}
+            {view === 'today' && (
+              <form onSubmit={handleAdd} className="mb-7 space-y-2">
                 <input
-                  type="date"
-                  value={dueDate}
-                  onChange={e => setDueDate(e.target.value)}
-                  className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-md px-2 py-1 text-[11px] text-[#777] focus:outline-none focus:border-[#333]"
+                  value={addTitle}
+                  onChange={e => setAddTitle(e.target.value)}
+                  onFocus={() => setFormExpanded(true)}
+                  placeholder="Add a task…"
+                  autoComplete="off"
+                  className="w-full bg-[#111] border border-[#252525] rounded-lg px-3 py-2.5 text-[13px] text-[#ccc] placeholder:text-[#444] focus:outline-none focus:border-[#333]"
                 />
-              )}
-              <TypePicker inline current={newTaskType} onChange={t => setNewTaskType(t)} />
+                {formExpanded && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {isRecurring ? (
+                      <div className="flex gap-1">
+                        {DAY_LABELS.map(({ day, short }) => (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => setRecurDay(day)}
+                            className={`px-2 py-1 rounded text-[11px] border transition-colors ${
+                              recurDay === day ? 'bg-[#1e1e1e] border-[#333] text-[#ccc]' : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666] hover:text-[#999]'
+                            }`}
+                          >{short}</button>
+                        ))}
+                      </div>
+                    ) : (
+                      <input
+                        type="date"
+                        value={dueDate}
+                        onChange={e => setDueDate(e.target.value)}
+                        className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-md px-2 py-1 text-[11px] text-[#777] focus:outline-none focus:border-[#333]"
+                      />
+                    )}
+                    <TypePicker inline current={newTaskType} onChange={t => setNewTaskType(t)} />
+                    <button
+                      type="button"
+                      onClick={() => setIsRecurring(v => !v)}
+                      className={`px-2.5 py-1 rounded-md text-[11px] border transition-colors ${
+                        isRecurring ? 'bg-[#1e1e1e] border-[#333] text-[#aaa]' : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666] hover:text-[#999]'
+                      }`}
+                    >🔁 Recurring</button>
+                    <button
+                      type="button"
+                      onClick={() => setBucket(b => b === 'must_do' ? 'nice_to_have' : 'must_do')}
+                      className="px-2.5 py-1 rounded-md text-[11px] border border-[#1a1a1a] bg-[#0f0f0f] text-[#666] hover:text-[#999] transition-colors"
+                    >
+                      {bucket === 'must_do' ? '★ Must Do' : '◇ Nice to Have'}
+                    </button>
+                    <button
+                      type="submit"
+                      className="ml-auto bg-[#1e1e1e] border border-[#2a2a2a] text-[#ccc] rounded-lg px-3 py-1.5 text-[12px] hover:bg-[#242424] transition-colors"
+                    >+ Add</button>
+                  </div>
+                )}
+              </form>
+            )}
+
+            {showRest ? (
+              <AllDoneScreen />
+            ) : (
+              <>
+                <Bucket title="Must Do"      tasks={mustDo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
+                <Bucket title="Nice to Have" tasks={niceTo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
+              </>
+            )}
+
+            {view !== 'next_week' && !showRest && (
               <button
-                type="button"
-                onClick={() => setIsRecurring(v => !v)}
-                className={`px-2.5 py-1 rounded-md text-[11px] border transition-colors ${
-                  isRecurring ? 'bg-[#1e1e1e] border-[#333] text-[#aaa]' : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666] hover:text-[#999]'
-                }`}
-              >🔁 Recurring</button>
-              <button
-                type="button"
-                onClick={() => setBucket(b => b === 'must_do' ? 'nice_to_have' : 'must_do')}
-                className="px-2.5 py-1 rounded-md text-[11px] border border-[#1a1a1a] bg-[#0f0f0f] text-[#666] hover:text-[#999] transition-colors"
+                onClick={() => switchView('next_week')}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 bg-[#0d0d0d] border border-[#141414] rounded-lg mt-2 text-left"
               >
-                {bucket === 'must_do' ? '★ Must Do' : '◇ Nice to Have'}
+                <span className="text-[12px] text-[#aaa]">Next Week</span>
+                <span className="text-[12px] text-[#999]">{nextWeekCount} tasks ›</span>
               </button>
-              <button
-                type="submit"
-                className="ml-auto bg-[#1e1e1e] border border-[#2a2a2a] text-[#ccc] rounded-lg px-3 py-1.5 text-[12px] hover:bg-[#242424] transition-colors"
-              >+ Add</button>
-            </div>
-          </form>
-        )}
+            )}
 
-        {showRest ? (
-          <AllDoneScreen />
-        ) : (
-          <div className="relative">
-            {burstActive && <BurstParticles />}
-            <div className={`transition-opacity duration-300 ${burstActive ? 'opacity-0' : 'opacity-100'}`}>
-              <Bucket title="Must Do"      tasks={mustDo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
-              <Bucket title="Nice to Have" tasks={niceTo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
-            </div>
           </div>
-        )}
-
-        {view !== 'next_week' && !showRest && (
-          <button
-            onClick={() => switchView('next_week')}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 bg-[#0d0d0d] border border-[#141414] rounded-lg mt-2 text-left"
-          >
-            <span className="text-[12px] text-[#aaa]">Next Week</span>
-            <span className="text-[12px] text-[#999]">{nextWeekCount} tasks ›</span>
-          </button>
-        )}
+        </div>
       </div>
     </div>
   )
