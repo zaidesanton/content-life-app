@@ -502,9 +502,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
         />
       </div>
 
-      <div className="px-6 md:px-8 pt-6 pb-6 max-w-xl">
-      {/* Title */}
-      <h1 className="text-[20px] font-semibold text-white mb-1">{VIEW_LABELS[view]}</h1>
+      <div className="px-6 md:px-8 pt-4 pb-6 max-w-xl">
       <p suppressHydrationWarning className="text-[12px] text-[#aaa] mb-5">{viewSubtitle(view)}</p>
 
       {/* Add task form — only in Today view */}
