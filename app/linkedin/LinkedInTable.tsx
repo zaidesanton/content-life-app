@@ -15,7 +15,7 @@ const SCORE_COLOR: Record<number, string> = {
 }
 
 function ScoreBadge({ score }: { score: number | null }) {
-  if (!score) return <span className="text-[#555] text-xs">—</span>
+  if (!score) return <span className="text-[#777] text-xs">—</span>
   return <span className={`text-xs font-bold tabular-nums ${SCORE_COLOR[score]}`}>{score}/10</span>
 }
 
@@ -97,7 +97,7 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
       <th
         onClick={() => toggleSort(colKey)}
         className={`px-2 py-2 text-[10px] font-medium uppercase tracking-wider cursor-pointer select-none whitespace-nowrap text-right w-[68px] ${
-          active ? 'text-[#aaa]' : 'text-[#555] hover:text-[#999]'
+          active ? 'text-white' : 'text-[#888] hover:text-[#ccc]'
         }`}
       >
         {label}{active ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}
@@ -111,25 +111,25 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
       <div className="px-6 pt-5 pb-3 border-b border-[#111]">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-[16px] font-semibold text-white">LinkedIn Posts</h1>
-          <span className="text-xs text-[#666]">{visible.length} / {posts.length}</span>
+          <span className="text-xs text-[#888]">{visible.length} / {posts.length}</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <input
             type="date"
             value={dateFrom}
             onChange={e => setDateFrom(e.target.value)}
-            className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-md px-2 py-1 text-[11px] text-[#555] focus:outline-none focus:border-[#333] w-[130px]"
+            className="bg-[#0f0f0f] border border-[#252525] rounded-md px-2 py-1 text-[11px] text-[#888] focus:outline-none focus:border-[#444] w-[130px]"
           />
           <input
             type="date"
             value={dateTo}
             onChange={e => setDateTo(e.target.value)}
-            className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-md px-2 py-1 text-[11px] text-[#555] focus:outline-none focus:border-[#333] w-[130px]"
+            className="bg-[#0f0f0f] border border-[#252525] rounded-md px-2 py-1 text-[11px] text-[#888] focus:outline-none focus:border-[#444] w-[130px]"
           />
           <button
             onClick={() => setShowDupes(v => !v)}
             className={`px-3 py-1 rounded-md text-[11px] border transition-colors ${
-              showDupes ? 'bg-[#141414] border-[#252525] text-[#777]' : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666] hover:text-[#999]'
+              showDupes ? 'bg-[#141414] border-[#252525] text-white' : 'bg-[#0f0f0f] border-[#252525] text-[#888] hover:text-[#ccc]'
             }`}
           >Show dupes</button>
           <button
@@ -149,8 +149,8 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
                 onClick={() => setTagFilter(f => f === tag ? null : tag)}
                 className={`px-2.5 py-0.5 rounded-full text-[11px] border transition-colors ${
                   tagFilter === tag
-                    ? 'bg-[#1a2a1a] border-[#2a4a2a] text-[#6a9a6a]'
-                    : 'bg-[#0f0f0f] border-[#1a1a1a] text-[#666] hover:text-[#999] hover:border-[#2a2a2a]'
+                    ? 'bg-[#1a2a1a] border-[#2a4a2a] text-[#7ab87a]'
+                    : 'bg-[#0f0f0f] border-[#252525] text-[#888] hover:text-[#ccc] hover:border-[#333]'
                 }`}
               >
                 {tag}
@@ -166,7 +166,7 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
         <table className="w-full border-collapse table-fixed">
           <thead className="sticky top-0 bg-[#0a0a0a] z-10">
             <tr className="border-b border-[#111]">
-              <th className="px-3 py-2 text-[10px] font-medium uppercase tracking-wider text-[#555] text-left">Hook</th>
+              <th className="px-3 py-2 text-[10px] font-medium uppercase tracking-wider text-[#888] text-left">Hook</th>
               {sortCols.map(c => <SortTh key={c.key} colKey={c.key} label={c.label} />)}
               <th className="w-8" />
             </tr>
@@ -224,13 +224,13 @@ export default function LinkedInTable({ posts }: { posts: PostRow[] }) {
                         )}
                       </div>
                     </td>
-                    <td className="px-2 py-[9px] text-[12px] text-[#555] text-right whitespace-nowrap w-[68px]">
+                    <td className="px-2 py-[9px] text-[12px] text-[#999] text-right whitespace-nowrap w-[68px]">
                       {new Date(post.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })}
                     </td>
-                    <td className="px-2 py-[9px] text-[12px] text-[#666] text-right tabular-nums w-[68px]">{post.reactions}</td>
-                    <td className="px-2 py-[9px] text-[12px] text-[#666] text-right tabular-nums w-[68px]">{post.comments ?? '—'}</td>
-                    <td className="px-2 py-[9px] text-[12px] text-[#666] text-right tabular-nums w-[68px]">{post.reposts ?? '—'}</td>
-                    <td className="px-2 py-[9px] text-[12px] text-[#666] text-right tabular-nums w-[68px]">
+                    <td className="px-2 py-[9px] text-[12px] text-[#aaa] text-right tabular-nums w-[68px]">{post.reactions}</td>
+                    <td className="px-2 py-[9px] text-[12px] text-[#aaa] text-right tabular-nums w-[68px]">{post.comments ?? '—'}</td>
+                    <td className="px-2 py-[9px] text-[12px] text-[#aaa] text-right tabular-nums w-[68px]">{post.reposts ?? '—'}</td>
+                    <td className="px-2 py-[9px] text-[12px] text-[#aaa] text-right tabular-nums w-[68px]">
                       {post.impressions > 0 ? post.impressions.toLocaleString() : '—'}
                     </td>
                     <td className="px-2 py-[9px] text-right w-[68px]"><ScoreBadge score={score ?? null} /></td>

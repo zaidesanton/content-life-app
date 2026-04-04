@@ -85,7 +85,7 @@ function TagEditor({
             if (e.key === 'Escape') { setOpen(false); setInput('') }
           }}
           placeholder="+ add tag"
-          className="bg-transparent border border-dashed border-[#333] rounded-full px-2.5 py-0.5 text-[11px] text-[#777] placeholder:text-[#555] focus:outline-none focus:border-[#555] w-20 focus:w-28 transition-all"
+          className="bg-transparent border border-dashed border-[#444] rounded-full px-2.5 py-0.5 text-[11px] text-[#aaa] placeholder:text-[#777] focus:outline-none focus:border-[#666] w-20 focus:w-28 transition-all"
         />
         {open && (input || suggestions.length > 0) && (
           <div className="absolute top-7 left-0 z-20 bg-[#141414] border border-[#252525] rounded-lg overflow-hidden min-w-[140px] shadow-xl">
@@ -157,7 +157,7 @@ export default function PostDetail({
       </Link>
 
       {/* Stats row */}
-      <div className="flex flex-wrap items-center gap-4 mb-4 text-[12px] text-[#555]">
+      <div className="flex flex-wrap items-center gap-4 mb-4 text-[12px] text-[#aaa]">
         <span>{new Date(post.published_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
         <span>👍 {post.reactions}</span>
         <span>💬 {post.comments ?? 0}</span>
@@ -182,13 +182,13 @@ export default function PostDetail({
 
         {/* Tags */}
         <div>
-          <p className="text-[10px] font-semibold text-[#666] uppercase tracking-widest mb-3">Tags</p>
+          <p className="text-[10px] font-semibold text-[#999] uppercase tracking-widest mb-3">Tags</p>
           <TagEditor tags={tags} allTags={allTags} onChange={handleTagsChange} />
         </div>
 
         {/* Score */}
         <div>
-          <p className="text-[10px] font-semibold text-[#666] uppercase tracking-widest mb-3">Hook Score</p>
+          <p className="text-[10px] font-semibold text-[#999] uppercase tracking-widest mb-3">Hook Score</p>
           <div className="flex items-center gap-3 flex-wrap">
             {score && (
               <span className={`text-sm font-bold tabular-nums ${SCORE_COLOR[score]}`}>{score}/10</span>
@@ -201,7 +201,7 @@ export default function PostDetail({
                   className={`w-7 h-7 rounded text-[12px] font-semibold transition-all ${
                     score === n
                       ? `${SCORE_COLOR[n]} bg-[#1a1a1a] ring-1 ring-current`
-                      : 'text-[#555] hover:text-[#aaa]'
+                      : 'text-[#888] hover:text-white'
                   }`}
                 >{n}</button>
               ))}
@@ -212,7 +212,7 @@ export default function PostDetail({
         {/* Hook alternatives */}
         {post.hook_alternatives && post.hook_alternatives.length > 0 && (
           <div>
-            <p className="text-[10px] font-semibold text-[#666] uppercase tracking-widest mb-3">10/10 Alternatives</p>
+            <p className="text-[10px] font-semibold text-[#999] uppercase tracking-widest mb-3">10/10 Alternatives</p>
             <div className="space-y-3">
               {post.hook_alternatives.map((alt, i) => (
                 <div key={i} className="flex gap-3 items-start">
@@ -227,7 +227,7 @@ export default function PostDetail({
         {/* Duplicate reposts */}
         {dupes.length > 0 && (
           <div>
-            <p className="text-[10px] font-semibold text-[#666] uppercase tracking-widest mb-3">
+            <p className="text-[10px] font-semibold text-[#999] uppercase tracking-widest mb-3">
               Reposted {dupes.length}×
             </p>
             <div className="flex flex-wrap gap-2">

@@ -57,7 +57,7 @@ export default function Sidebar() {
                 key={href}
                 href={href}
                 className={`flex items-center gap-2.5 px-5 py-[9px] text-[13px] transition-colors ${
-                  active ? 'text-white' : 'text-[#666] hover:text-[#aaa]'
+                  active ? 'text-white' : 'text-[#999] hover:text-white'
                 }`}
               >
                 <span className="w-4 text-center text-[14px] leading-none">{icon}</span>
@@ -115,7 +115,7 @@ export default function Sidebar() {
                 key={href}
                 href={href}
                 className={`flex items-center gap-2.5 px-5 py-[9px] text-[13px] transition-colors ${
-                  active ? 'text-white' : 'text-[#555] hover:text-[#999]'
+                  active ? 'text-white' : 'text-[#999] hover:text-white'
                 }`}
               >
                 <span className="w-4 text-center text-[14px] leading-none">{icon}</span>

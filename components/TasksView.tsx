@@ -304,7 +304,7 @@ function Bucket({
 
   return (
     <div className="mb-6">
-      <p className="text-[10px] font-semibold text-[#777] uppercase tracking-[.08em] mb-2.5">{title}</p>
+      <p className="text-[10px] font-semibold text-[#999] uppercase tracking-[.08em] mb-2.5">{title}</p>
       <div className="divide-y divide-[#0f0f0f]">
         {sorted.map(task => {
           const done = isCompleted(task, view)
@@ -347,7 +347,7 @@ function Bucket({
 
               {/* Date label */}
               {dateLabel && (
-                <span className={`text-[11px] tabular-nums shrink-0 ${done ? 'text-[#4a4a4a]' : 'text-[#777]'}`}>
+                <span className={`text-[11px] tabular-nums shrink-0 ${done ? 'text-[#555]' : 'text-[#999]'}`}>
                   {dateLabel}
                 </span>
               )}
@@ -490,7 +490,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
     <div className="px-6 md:px-8 pt-8 pb-6 max-w-xl">
       {/* Title */}
       <h1 className="text-[20px] font-semibold text-white mb-1">{VIEW_LABELS[view]}</h1>
-      <p suppressHydrationWarning className="text-[12px] text-[#888] mb-5">{viewSubtitle(view)}</p>
+      <p suppressHydrationWarning className="text-[12px] text-[#aaa] mb-5">{viewSubtitle(view)}</p>
 
       {/* View toggle */}
       <div className="inline-flex bg-[#111] border border-[#1a1a1a] rounded-md mb-6">
@@ -499,7 +499,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
             key={v}
             onClick={() => switchView(v)}
             className={`px-3.5 py-1.5 text-[12px] rounded-[5px] transition-colors ${
-              view === v ? 'bg-[#1e1e1e] text-[#ccc]' : 'text-[#666] hover:text-[#999]'
+              view === v ? 'bg-[#1e1e1e] text-white' : 'text-[#999] hover:text-white'
             }`}
           >
             {VIEW_LABELS[v]}
@@ -586,8 +586,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
           onClick={() => switchView('next_week')}
           className="w-full flex items-center justify-between px-3.5 py-2.5 bg-[#0d0d0d] border border-[#141414] rounded-lg mt-2 text-left"
         >
-          <span className="text-[12px] text-[#888]">Next Week</span>
-          <span className="text-[12px] text-[#777]">{nextWeekCount} tasks ›</span>
+          <span className="text-[12px] text-[#aaa]">Next Week</span>
+          <span className="text-[12px] text-[#999]">{nextWeekCount} tasks ›</span>
         </button>
       )}
     </div>
