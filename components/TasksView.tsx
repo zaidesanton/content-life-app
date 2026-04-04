@@ -272,12 +272,15 @@ function BurstParticles() {
 
 function AllDoneScreen() {
   return (
-    <div className="flex flex-col items-center justify-center py-10 px-6">
+    <div className="-mx-6 md:-mx-8 pt-2 pb-6">
       <img
         src="/all-done.jpg"
         alt="You are all done. Rest."
-        className="w-full max-w-xs rounded-2xl shadow-2xl"
-        style={{ animation: 'restImageIn 0.9s cubic-bezier(0.22,1,0.36,1) forwards' }}
+        className="w-full rounded-2xl shadow-2xl object-cover"
+        style={{
+          height: 'calc(100svh - 9rem)',
+          animation: 'restImageIn 0.9s cubic-bezier(0.22,1,0.36,1) forwards',
+        }}
       />
     </div>
   )
