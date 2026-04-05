@@ -46,9 +46,6 @@ export default function Sidebar() {
     <>
       {/* ── Desktop sidebar ────────────────────────────────────────────── */}
       <aside className="hidden md:flex flex-col w-[180px] shrink-0 border-r border-[#141414] pt-7 pb-6">
-        <span className="px-5 mb-6 text-[13px] font-semibold text-white tracking-tight">
-          Content + Life
-        </span>
         <nav className="flex flex-col gap-0.5">
           {NAV.map(({ href, icon, label }) => {
             const active = pathname === href
@@ -70,7 +67,7 @@ export default function Sidebar() {
 
       {/* ── Mobile hamburger button ────────────────────────────────────── */}
       <button
-        className="md:hidden fixed top-4 left-4 z-50 w-8 h-8 flex items-center justify-center text-[#777] hover:text-white transition-colors"
+        className="md:hidden fixed top-0 left-0 z-50 h-14 w-14 flex items-center justify-center text-[#777] hover:text-white transition-colors bg-[#0a0a0a]"
         onClick={() => setOpen(v => !v)}
         aria-label={open ? 'Close navigation' : 'Open navigation'}
       >

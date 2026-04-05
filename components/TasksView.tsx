@@ -161,15 +161,15 @@ function todayISO() {
   return toLocalDateStr(new Date())
 }
 
-// Returns [monday, sunday] of the given week (offset 0 = current, 1 = next)
+// Returns [sunday, saturday] of the given week (offset 0 = current, 1 = next)
 function weekRange(offset = 0): [string, string] {
   const now = new Date()
-  const mon = new Date(now)
-  mon.setDate(now.getDate() - ((now.getDay() + 6) % 7) + offset * 7)
-  mon.setHours(0, 0, 0, 0)
-  const sun = new Date(mon)
-  sun.setDate(mon.getDate() + 6)
-  return [toLocalDateStr(mon), toLocalDateStr(sun)]
+  const sun = new Date(now)
+  sun.setDate(now.getDate() - now.getDay() + offset * 7)
+  sun.setHours(0, 0, 0, 0)
+  const sat = new Date(sun)
+  sat.setDate(sun.getDate() + 6)
+  return [toLocalDateStr(sun), toLocalDateStr(sat)]
 }
 
 function defaultDueDate(view: View): string {
@@ -289,13 +289,13 @@ function AllDoneScreen() {
 // ── Day labels ────────────────────────────────────────────────────────────────
 
 const DAY_LABELS: { day: number; short: string }[] = [
+  { day: 0, short: 'Sun' },
   { day: 1, short: 'Mon' },
   { day: 2, short: 'Tue' },
   { day: 3, short: 'Wed' },
   { day: 4, short: 'Thu' },
   { day: 5, short: 'Fri' },
   { day: 6, short: 'Sat' },
-  { day: 0, short: 'Sun' },
 ]
 
 // ── Bucket ────────────────────────────────────────────────────────────────────
@@ -512,21 +512,30 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
     startTransition(() => createTask(fd))
   }
 
+  const pageTabs = (
+    <PageTabs
+      tabs={[
+        { key: 'today',     label: 'Today'     },
+        { key: 'this_week', label: 'This Week'  },
+        { key: 'next_week', label: 'Next Week'  },
+      ]}
+      active={view}
+      onChange={k => switchView(k as View)}
+    />
+  )
+
   return (
     <div className="flex flex-col min-h-full">
-      <div className="border-b border-[#141414]">
-        <PageTabs
-          tabs={[
-            { key: 'today',     label: 'Today'     },
-            { key: 'this_week', label: 'This Week'  },
-            { key: 'next_week', label: 'Next Week'  },
-          ]}
-          active={view}
-          onChange={k => switchView(k as View)}
-        />
+      {/* Mobile: fixed header row — hamburger (from Sidebar) + tabs side-by-side */}
+      <div className="md:hidden fixed top-0 left-14 right-0 z-30 h-14 flex items-center bg-[#0a0a0a] border-b border-[#141414] overflow-hidden">
+        {pageTabs}
+      </div>
+      {/* Desktop: sticky tab bar */}
+      <div className="hidden md:block sticky top-0 z-20 border-b border-[#141414] bg-[#0a0a0a]">
+        {pageTabs}
       </div>
 
-      <div className="px-6 md:px-8 pt-4 pb-6 max-w-xl">
+      <div className="px-6 md:px-8 pt-4 pb-6 w-full max-w-xl md:mx-auto">
         <p suppressHydrationWarning className="text-[12px] text-[#aaa] mb-5">{viewSubtitle(view)}</p>
 
         <div className="relative">

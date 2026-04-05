@@ -20,11 +20,10 @@ function toDateStr(d: Date): string {
 
 export default async function TasksPage() {
   const today = new Date()
-  const mondayOffset = (today.getDay() + 6) % 7
 
-  // Monday of current week
+  // Sunday of current week
   const weekStart = new Date(today)
-  weekStart.setDate(today.getDate() - mondayOffset)
+  weekStart.setDate(today.getDate() - today.getDay())
 
   // Sunday of next week (13 days from that Monday)
   const nextWeekEnd = new Date(weekStart)
