@@ -390,9 +390,6 @@ function Bucket({
   )
 }
 
-// ── Module-level flag — survives React re-mounts, resets on full page reload ──
-let _todayAllDone = false
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function TasksView({ tasks }: { tasks: Task[] }) {
@@ -402,7 +399,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
   const [burstActive, setBurstActive] = useState(false)
   const [, startTransition] = useTransition()
 
-  const [doneForSession, setDoneForSession] = useState(() => _todayAllDone)
+  const [doneForSession, setDoneForSession] = useState(false)
 
   const [addTitle, setAddTitle] = useState('')
   const [formExpanded, setFormExpanded] = useState(false)
@@ -458,7 +455,6 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
       if (willBeAllDone) {
         // Sequence: task exit (500ms) → burst (900ms) → rest image fades in
         setTimeout(() => {
-          _todayAllDone = true
           setBurstActive(true)
           setDoneForSession(true)
           setCompleting(s => { const n = new Set(s); n.delete(String(task.id)); return n })
