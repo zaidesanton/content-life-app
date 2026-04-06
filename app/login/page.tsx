@@ -1,13 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { createSupabaseBrowserClient } from '@/lib/supabase-browser'
 
 function LoginContent() {
   const params = useSearchParams()
-  const router = useRouter()
   const unauthorized = params.get('error') === 'unauthorized'
 
   const [email, setEmail] = useState('')
@@ -29,8 +28,7 @@ function LoginContent() {
       return
     }
 
-    router.push('/')
-    router.refresh()
+    window.location.href = '/'
   }
 
   return (
