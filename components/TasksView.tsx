@@ -526,9 +526,11 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
       <div className="md:hidden fixed top-0 left-14 right-0 z-30 h-14 flex items-center bg-[#0a0a0a] border-b border-[#141414] overflow-hidden">
         {pageTabs}
       </div>
-      {/* Desktop: sticky tab bar */}
+      {/* Desktop: sticky tab bar — centered to match content */}
       <div className="hidden md:block sticky top-0 z-20 border-b border-[#141414] bg-[#0a0a0a]">
-        {pageTabs}
+        <div className="max-w-xl mx-auto px-6 md:px-8">
+          {pageTabs}
+        </div>
       </div>
 
       <div className="px-6 md:px-8 pt-4 pb-6 w-full max-w-xl md:mx-auto">
@@ -538,8 +540,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
           {burstActive && <BurstParticles />}
           <div className={`transition-opacity duration-300 ${burstActive ? 'opacity-0' : 'opacity-100'}`}>
 
-            {/* Add task form — today only, hidden when all done */}
-            {view === 'today' && !showRest && (
+            {/* Add task form — today only, hidden during all-done animation */}
+            {view === 'today' && !doneForSession && (
               <form onSubmit={handleAdd} className="mb-7 space-y-2">
                 <input
                   value={addTitle}
