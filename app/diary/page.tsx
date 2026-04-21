@@ -19,5 +19,15 @@ export default async function DiaryPage() {
   const todayEntry = entries.find(e => e.date === todayStr) ?? null
   const history = entries.filter(e => e.date !== todayStr)
 
-  return <DiaryView todayStr={todayStr} todayEntry={todayEntry} history={history} />
+  // Last 7 days (excluding today) with no entry
+  const entryDates = new Set(entries.map(e => e.date))
+  const missedDays: string[] = []
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(today)
+    d.setDate(today.getDate() - i)
+    const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    if (!entryDates.has(ds)) missedDays.push(ds)
+  }
+
+  return <DiaryView todayStr={todayStr} todayEntry={todayEntry} history={history} missedDays={missedDays} />
 }

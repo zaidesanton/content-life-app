@@ -25,18 +25,91 @@ export default async function TasksPage() {
   const weekStart = new Date(today)
   weekStart.setDate(today.getDate() - today.getDay())
 
-  // Sunday of next week (13 days from that Monday)
+  // Saturday of next week
   const nextWeekEnd = new Date(weekStart)
   nextWeekEnd.setDate(weekStart.getDate() + 13)
 
-  const { data: tasks } = await supabase
+  const windowStart = toDateStr(weekStart)
+  const windowEnd   = toDateStr(nextWeekEnd)
+
+  // Fetch existing tasks in window
+  const { data: existing } = await supabase
     .from('tasks')
     .select('id, title, bucket, task_type, category, due_date, recurring_task_id, completed_date')
-    .gte('due_date', toDateStr(weekStart))
-    .lte('due_date', toDateStr(nextWeekEnd))
+    .gte('due_date', windowStart)
+    .lte('due_date', windowEnd)
     .order('due_date', { ascending: true })
 
+  // On-demand: generate any missing recurring instances for this window
+  const { data: recurringTasks } = await supabase
+    .from('recurring_tasks')
+    .select('id, title, bucket, task_type, recurrence_day')
+
+  let tasks = existing ?? []
+
+  if (recurringTasks && recurringTasks.length > 0) {
+    const existingKeys = new Set(
+      tasks
+        .filter(t => t.recurring_task_id)
+        .map(t => `${t.recurring_task_id}:${t.due_date}`)
+    )
+
+    const toInsert: Array<{
+      title: string
+      bucket: string
+      task_type: string | null
+      category: null
+      due_date: string
+      recurring_task_id: string
+    }> = []
+
+    for (const rt of recurringTasks) {
+      const cur = new Date(weekStart)
+      while (cur <= nextWeekEnd) {
+        if (cur.getDay() === rt.recurrence_day) {
+          const ds = toDateStr(cur)
+          if (!existingKeys.has(`${rt.id}:${ds}`)) {
+            toInsert.push({
+              title: rt.title,
+              bucket: rt.bucket,
+              task_type: rt.task_type,
+              category: null,
+              due_date: ds,
+              recurring_task_id: rt.id,
+            })
+          }
+        }
+        cur.setDate(cur.getDate() + 1)
+      }
+    }
+
+    if (toInsert.length > 0) {
+      await supabase.from('tasks').insert(toInsert)
+      // Re-fetch to get DB-assigned IDs for the new instances
+      const { data: fresh } = await supabase
+        .from('tasks')
+        .select('id, title, bucket, task_type, category, due_date, recurring_task_id, completed_date')
+        .gte('due_date', windowStart)
+        .lte('due_date', windowEnd)
+        .order('due_date', { ascending: true })
+      tasks = fresh ?? []
+    }
+  }
+
+  // Fetch uncompleted tasks from before this week (overdue, up to 60 days back)
+  const pastStart = new Date(today)
+  pastStart.setDate(today.getDate() - 60)
+  const { data: overdue } = await supabase
+    .from('tasks')
+    .select('id, title, bucket, task_type, category, due_date, recurring_task_id, completed_date')
+    .lt('due_date', windowStart)
+    .gte('due_date', toDateStr(pastStart))
+    .is('completed_date', null)
+    .order('due_date', { ascending: true })
+
+  const allTasks = [...(overdue ?? []), ...tasks]
+
   return (
-    <TasksView tasks={(tasks ?? []) as Task[]} />
+    <TasksView tasks={allTasks as Task[]} />
   )
 }

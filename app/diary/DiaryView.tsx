@@ -20,7 +20,7 @@ function fmt(dateStr: string) {
 
 // ── Today's entry editor ──────────────────────────────────────────────────────
 
-function TodayEditor({ todayStr, initial }: { todayStr: string; initial: DiaryEntry | null }) {
+function TodayEditor({ date, initial }: { date: string; initial: DiaryEntry | null }) {
   const [score, setScore] = useState<number | null>(initial?.score ?? null)
   const [goodThing, setGoodThing] = useState(initial?.good_thing ?? '')
   const [thoughts, setThoughts] = useState(initial?.thoughts ?? '')
@@ -32,9 +32,9 @@ function TodayEditor({ todayStr, initial }: { todayStr: string; initial: DiaryEn
   const save = useCallback((fields: { score?: number | null; good_thing?: string; thoughts?: string }) => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      startTransition(() => saveDiaryEntry(todayStr, fields))
+      startTransition(() => saveDiaryEntry(date, fields))
     }, 600)
-  }, [todayStr])
+  }, [date])
 
   function handleScore(n: number) {
     const next = score === n ? null : n
@@ -159,16 +159,42 @@ function PastEntry({ entry }: { entry: DiaryEntry }) {
   )
 }
 
+// ── Missed day row ────────────────────────────────────────────────────────────
+
+function MissedDayRow({ date }: { date: string }) {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div className="border-b border-[#0f0f0f]">
+      <div
+        className="flex items-center gap-3 py-3 cursor-pointer"
+        onClick={() => setExpanded(v => !v)}
+      >
+        <span className="text-[12px] text-[#888] shrink-0 w-[88px]">{fmt(date)}</span>
+        <span className="text-[12px] text-[#555] flex-1">— no entry</span>
+        <span className={`text-[10px] text-[#777] shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}>▾</span>
+      </div>
+      {expanded && (
+        <div className="pb-5 pt-1">
+          <TodayEditor date={date} initial={null} />
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main view ─────────────────────────────────────────────────────────────────
 
 export default function DiaryView({
   todayStr,
   todayEntry,
   history,
+  missedDays,
 }: {
   todayStr: string
   todayEntry: DiaryEntry | null
   history: DiaryEntry[]
+  missedDays: string[]
 }) {
   return (
     <div className="px-6 md:px-8 pt-8 pb-10 max-w-xl">
@@ -181,7 +207,21 @@ export default function DiaryView({
       </p>
 
       {/* Today's editor */}
-      <TodayEditor todayStr={todayStr} initial={todayEntry} />
+      <TodayEditor date={todayStr} initial={todayEntry} />
+
+      {/* Missed days */}
+      {missedDays.length > 0 && (
+        <div className="mt-10">
+          <p className="text-[10px] font-semibold text-[#999] uppercase tracking-widest mb-3">
+            Missed days
+          </p>
+          <div>
+            {missedDays.map(date => (
+              <MissedDayRow key={date} date={date} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* History */}
       {history.length > 0 && (

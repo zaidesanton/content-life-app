@@ -19,44 +19,10 @@ export async function createTask(formData: FormData) {
     const recurrence_day = parseInt(formData.get('recurrence_day') as string)
     if (isNaN(recurrence_day)) return
 
-    // Create recurring task template
-    const { data: rt, error } = await supabase
+    // Just store the template — page.tsx generates instances on demand
+    await supabase
       .from('recurring_tasks')
       .insert({ title, bucket, task_type, recurrence_day })
-      .select()
-      .single()
-    if (error || !rt) return
-
-    // Generate instances: 1 year back to 2 years forward
-    const instances: Array<{
-      title: string
-      bucket: string
-      task_type: string | null
-      category: null
-      due_date: string
-      recurring_task_id: string
-    }> = []
-    const start = new Date()
-    start.setFullYear(start.getFullYear() - 1)
-    const end = new Date()
-    end.setFullYear(end.getFullYear() + 2)
-
-    const cur = new Date(start)
-    while (cur <= end) {
-      if (cur.getDay() === recurrence_day) {
-        instances.push({
-          title: rt.title,
-          bucket: rt.bucket,
-          task_type: rt.task_type,
-          category: null,
-          due_date: toDateStr(cur),
-          recurring_task_id: rt.id,
-        })
-      }
-      cur.setDate(cur.getDate() + 1)
-    }
-
-    await supabase.from('tasks').insert(instances)
   } else {
     const due_date = (formData.get('due_date') as string) || toDateStr(new Date())
     await supabase.from('tasks').insert({ title, bucket, task_type, due_date })
@@ -71,7 +37,12 @@ export async function deleteTask(id: string) {
 }
 
 export async function deleteRecurringTask(id: string) {
-  // ON DELETE CASCADE removes all linked task instances
+  // Detach completed instances so CASCADE doesn't remove them
+  await supabase.from('tasks')
+    .update({ recurring_task_id: null })
+    .eq('recurring_task_id', id)
+    .not('completed_date', 'is', null)
+  // ON DELETE CASCADE removes remaining (uncompleted) instances
   await supabase.from('recurring_tasks').delete().eq('id', id)
   revalidatePath('/')
 }
@@ -84,5 +55,22 @@ export async function updateTaskType(id: string, taskType: string | null) {
 export async function toggleTask(id: string, completed: boolean) {
   const completed_date = completed ? toDateStr(new Date()) : null
   await supabase.from('tasks').update({ completed_date }).eq('id', id)
+  revalidatePath('/')
+}
+
+export async function updateTaskDate(id: string, newDate: string) {
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('due_date')
+    .eq('id', id)
+    .single()
+  if (!task) return
+
+  await supabase.from('task_date_changes').insert({
+    task_id: parseInt(id),
+    old_date: task.due_date,
+    new_date: newDate,
+  })
+  await supabase.from('tasks').update({ due_date: newDate }).eq('id', id)
   revalidatePath('/')
 }

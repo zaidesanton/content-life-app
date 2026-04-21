@@ -33,7 +33,28 @@
       "mcp__2b7b102f-23a3-49f8-84d4-e71310e2e871__list_deployments",
       "mcp__73053cd9-14de-45c5-be99-f5e60645cf70__list_projects",
       "mcp__2b7b102f-23a3-49f8-84d4-e71310e2e871__deploy_to_vercel",
-      "Bash(vercel deploy:*)"
+      "Bash(vercel deploy:*)",
+      "mcp__73053cd9-14de-45c5-be99-f5e60645cf70__get_logs",
+      "Bash(npx tsc:*)",
+      "Read(//c/Users/Taranis/Documents/Projects/Managar Dev/Repos/Content+Life App/$APPDATA/Claude/**)",
+      "Bash(python \"C:/Users/Taranis/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/20f2a67c-1271-40d2-a953-6a0b53235968/786546d2-0129-4a08-8daa-3dee8d54963f/skills/substack-to-beehiiv/scripts/clean_substack.py\" \"C:/Users/Taranis/Downloads/subscriber-export-2026-04-04-15-46-26.csv\" \"C:/Users/Taranis/Downloads/beehiiv-import.csv\")",
+      "Bash(SCRIPT=\"C:/Users/Taranis/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/20f2a67c-1271-40d2-a953-6a0b53235968/786546d2-0129-4a08-8daa-3dee8d54963f/skills/substack-to-beehiiv/scripts/clean_substack.py\")",
+      "Bash(INPUT=\"C:/Users/Taranis/Downloads/subscriber-export-2026-04-04-15-46-26.csv\")",
+      "Bash(OUTPUT=\"C:/Users/Taranis/Downloads/beehiiv-import.csv\")",
+      "Bash(python \"$SCRIPT\" \"$INPUT\" \"$OUTPUT\")",
+      "Bash(SKILL_CREATOR=\"C:/Users/Taranis/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/20f2a67c-1271-40d2-a953-6a0b53235968/786546d2-0129-4a08-8daa-3dee8d54963f/skills/skill-creator\")",
+      "Bash(SKILL_DIR=\"C:/Users/Taranis/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/20f2a67c-1271-40d2-a953-6a0b53235968/786546d2-0129-4a08-8daa-3dee8d54963f/skills/substack-to-beehiiv\")",
+      "mcp__2b7b102f-23a3-49f8-84d4-e71310e2e871__get_project",
+      "Bash(xargs grep:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Read(//c/Users/Taranis/AppData/Roaming/Claude/**)",
+      "Read(//c/Users/Taranis/AppData/Roaming/Claude//**)",
+      "Bash(/dev/null echo:*)",
+      "Bash(SKILLS_DIR=\"/c/Users/Taranis/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/20f2a67c-1271-40d2-a953-6a0b53235968/786546d2-0129-4a08-8daa-3dee8d54963f/skills\")",
+      "Read(//c/Users/Taranis/Documents/Projects/Managar Dev/Repos/Content+Life App/**)",
+      "WebFetch(domain:mylifegame.app)",
+      "mcp__0ec6d7de-996b-45b0-9e34-27695c907bd7__web_search_exa",
+      "mcp__0ec6d7de-996b-45b0-9e34-27695c907bd7__web_fetch_exa"
     ]
   }
 }

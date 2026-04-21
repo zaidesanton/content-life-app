@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
 import type { Task } from '@/app/page'
-import { createTask, toggleTask, deleteTask, deleteRecurringTask, updateTaskType } from '@/app/actions'
+import { createTask, toggleTask, deleteTask, deleteRecurringTask, updateTaskType, updateTaskDate } from '@/app/actions'
 import PageTabs from '@/components/PageTabs'
 
 type View = 'today' | 'this_week' | 'next_week'
@@ -193,7 +193,10 @@ function isCompleted(task: Task): boolean {
 }
 
 function isTaskInView(task: Task, view: View): boolean {
-  if (view === 'today') return task.due_date === todayISO()
+  const today = todayISO()
+  if (view === 'today') {
+    return task.due_date === today || (task.due_date < today && !task.completed_date)
+  }
   const [start, end] = weekRange(view === 'next_week' ? 1 : 0)
   return task.due_date >= start && task.due_date <= end
 }
@@ -298,16 +301,97 @@ const DAY_LABELS: { day: number; short: string }[] = [
   { day: 6, short: 'Sat' },
 ]
 
+// ── TaskRow ───────────────────────────────────────────────────────────────────
+
+function TaskRow({
+  task, onToggle, onDelete, onTypeChange, onDateChange, isAnimating, view,
+}: {
+  task: Task
+  onToggle: (t: Task) => void
+  onDelete: (t: Task) => void
+  onTypeChange: (t: Task, type: TaskType | null) => void
+  onDateChange: (t: Task, newDate: string) => void
+  isAnimating: boolean
+  view: View
+}) {
+  const done = isCompleted(task)
+  const isRecurring = !!task.recurring_task_id
+  const dateInputRef = useRef<HTMLInputElement>(null)
+
+  const dateLabel = view === 'today'
+    ? ''
+    : new Date(task.due_date + 'T12:00:00').toLocaleDateString('en-GB', {
+        weekday: 'short', day: 'numeric', month: 'short',
+      })
+
+  return (
+    <div className={`group flex items-center gap-2.5 py-2 transition-all duration-500 ${isAnimating ? 'opacity-0 translate-y-1' : ''}`}>
+      <button
+        onClick={() => onToggle(task)}
+        className={`w-[15px] h-[15px] rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+          done ? 'border-[#222] bg-[#1a1a1a]' : 'border-[#333] hover:border-[#555]'
+        }`}
+      >
+        {done && <span className="text-[8px] text-[#555]">✓</span>}
+      </button>
+
+      <span className={`text-[13px] flex-1 transition-colors duration-200 ${done ? 'line-through text-[#666]' : 'text-[#d4d4d4]'}`}>
+        {task.title}
+      </span>
+
+      {dateLabel && (
+        <div className="relative shrink-0 cursor-pointer" onClick={() => dateInputRef.current?.showPicker()}>
+          <span className={`text-[11px] tabular-nums transition-colors ${done ? 'text-[#555]' : 'text-[#999] hover:text-[#bbb]'}`}>
+            {dateLabel}
+          </span>
+          <input
+            ref={dateInputRef}
+            key={task.due_date}
+            type="date"
+            defaultValue={task.due_date}
+            onChange={e => { if (e.target.value) onDateChange(task, e.target.value) }}
+            className="absolute inset-0 opacity-0 pointer-events-none w-full h-full"
+            tabIndex={-1}
+          />
+        </div>
+      )}
+
+      <TypePicker current={task.task_type} onChange={type => onTypeChange(task, type)} />
+
+      {isRecurring && view !== 'today' && (
+        <span className={`text-[11px] shrink-0 leading-none ${done ? 'opacity-40' : 'opacity-70'}`}>🔁</span>
+      )}
+
+      {task.category && (
+        <span className="text-[10px] text-[#666] border border-[#222] rounded-full px-1.5 py-0.5 shrink-0">
+          {task.category}
+        </span>
+      )}
+
+      <button
+        onClick={() => onDelete(task)}
+        className="text-[#444] hover:text-[#999] transition-colors shrink-0 px-1"
+        title={isRecurring ? 'Delete recurring series' : 'Delete task'}
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M1.5 3h9M4.5 3V2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M2.5 3l.5 7h6l.5-7"/>
+        </svg>
+      </button>
+    </div>
+  )
+}
+
 // ── Bucket ────────────────────────────────────────────────────────────────────
 
 function Bucket({
-  title, tasks, onToggle, onDelete, onTypeChange, completing, view,
+  title, tasks, onToggle, onDelete, onTypeChange, onDateChange, completing, view,
 }: {
   title: string
   tasks: Task[]
   onToggle: (t: Task) => void
   onDelete: (t: Task) => void
   onTypeChange: (t: Task, type: TaskType | null) => void
+  onDateChange: (t: Task, newDate: string) => void
   completing: Set<string>
   view: View
 }) {
@@ -326,65 +410,18 @@ function Bucket({
     <div className="mb-6">
       <p className="text-[10px] font-semibold text-[#999] uppercase tracking-[.08em] mb-2.5">{title}</p>
       <div className="divide-y divide-[#0f0f0f]">
-        {sorted.map(task => {
-          const done = isCompleted(task)
-          const isAnimating = completing.has(String(task.id))
-          const isRecurring = !!task.recurring_task_id
-
-          const dateLabel = view === 'today'
-            ? ''
-            : new Date(task.due_date + 'T12:00:00').toLocaleDateString('en-GB', {
-                weekday: 'short', day: 'numeric', month: 'short',
-              })
-
-          return (
-            <div
-              key={task.id}
-              className={`group flex items-center gap-2.5 py-2 transition-all duration-500 ${isAnimating ? 'opacity-0 translate-y-1' : ''}`}
-            >
-              <button
-                onClick={() => onToggle(task)}
-                className={`w-[15px] h-[15px] rounded-full border flex items-center justify-center shrink-0 transition-colors ${
-                  done ? 'border-[#222] bg-[#1a1a1a]' : 'border-[#333] hover:border-[#555]'
-                }`}
-              >
-                {done && <span className="text-[8px] text-[#555]">✓</span>}
-              </button>
-
-              <span className={`text-[13px] flex-1 transition-colors duration-200 ${done ? 'line-through text-[#666]' : 'text-[#d4d4d4]'}`}>
-                {task.title}
-              </span>
-
-              {dateLabel && (
-                <span className={`text-[11px] tabular-nums shrink-0 ${done ? 'text-[#555]' : 'text-[#999]'}`}>
-                  {dateLabel}
-                </span>
-              )}
-
-              <TypePicker current={task.task_type} onChange={type => onTypeChange(task, type)} />
-
-              {isRecurring && view !== 'today' && (
-                <span className={`text-[11px] shrink-0 leading-none ${done ? 'opacity-40' : 'opacity-70'}`}>🔁</span>
-              )}
-
-              {task.category && (
-                <span className="text-[10px] text-[#666] border border-[#222] rounded-full px-1.5 py-0.5 shrink-0">
-                  {task.category}
-                </span>
-              )}
-
-              <button
-                onClick={() => onDelete(task)}
-                className="text-[#444] hover:text-[#999] transition-colors shrink-0 px-1"
-                title={isRecurring ? 'Delete recurring series' : 'Delete task'}
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1.5 3h9M4.5 3V2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1M2.5 3l.5 7h6l.5-7"/>
-                </svg>
-              </button>
-            </div>
-          )
-        })}
+        {sorted.map(task => (
+          <TaskRow
+            key={task.id}
+            task={task}
+            onToggle={onToggle}
+            onDelete={onDelete}
+            onTypeChange={onTypeChange}
+            onDateChange={onDateChange}
+            isAnimating={completing.has(String(task.id))}
+            view={view}
+          />
+        ))}
       </div>
     </div>
   )
@@ -396,6 +433,10 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
   const [view, setView] = useState<View>('today')
   const [localTasks, setLocalTasks] = useState<Task[]>(tasks)
   const [completing, setCompleting] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    setLocalTasks(tasks)
+  }, [tasks])
   const [burstActive, setBurstActive] = useState(false)
   const [, startTransition] = useTransition()
 
@@ -412,6 +453,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
   function switchView(v: View) {
     setView(v)
     setBurstActive(false)
+    setDoneForSession(false)
     if (!isRecurring) setDueDate(defaultDueDate(v))
   }
 
@@ -426,8 +468,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
 
   function handleDelete(task: Task) {
     if (task.recurring_task_id) {
-      if (!window.confirm(`Delete the entire "${task.title}" recurring series? This cannot be undone.`)) return
-      setLocalTasks(ts => ts.filter(t => t.recurring_task_id !== task.recurring_task_id))
+      if (!window.confirm(`Stop the "${task.title}" recurring series? Completed tasks will be kept.`)) return
+      setLocalTasks(ts => ts.filter(t => !(t.recurring_task_id === task.recurring_task_id && !t.completed_date)))
       startTransition(() => deleteRecurringTask(task.recurring_task_id!))
     } else {
       setLocalTasks(ts => ts.filter(t => t.id !== task.id))
@@ -476,6 +518,11 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
     startTransition(() => updateTaskType(String(task.id), type))
   }
 
+  function handleDateChange(task: Task, newDate: string) {
+    setLocalTasks(ts => ts.map(t => t.id === task.id ? { ...t, due_date: newDate } : t))
+    startTransition(() => updateTaskDate(String(task.id), newDate))
+  }
+
   function handleAdd(e: React.FormEvent) {
     e.preventDefault()
     const title = addTitle.trim()
@@ -505,6 +552,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
     }
 
     setAddTitle('')
+    setIsRecurring(false)
+    setFormExpanded(false)
     startTransition(() => createTask(fd))
   }
 
@@ -567,12 +616,18 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
                         ))}
                       </div>
                     ) : (
-                      <input
-                        type="date"
-                        value={dueDate}
-                        onChange={e => setDueDate(e.target.value)}
-                        className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-md px-2 py-1 text-[11px] text-[#777] focus:outline-none focus:border-[#333]"
-                      />
+                      <div className="relative bg-[#0f0f0f] border border-[#1a1a1a] rounded-md px-2 py-1">
+                        <span className="text-[11px] text-[#777] pointer-events-none">
+                          {new Date(dueDate + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
+                        </span>
+                        <input
+                          type="date"
+                          value={dueDate}
+                          onChange={e => { if (e.target.value) setDueDate(e.target.value) }}
+                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                          tabIndex={-1}
+                        />
+                      </div>
                     )}
                     <TypePicker inline current={newTaskType} onChange={t => setNewTaskType(t)} />
                     <button
@@ -602,8 +657,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
               <AllDoneScreen />
             ) : (
               <>
-                <Bucket title="Must Do"      tasks={mustDo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
-                <Bucket title="Nice to Have" tasks={niceTo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} completing={completing} view={view} />
+                <Bucket title="Must Do"      tasks={mustDo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} onDateChange={handleDateChange} completing={completing} view={view} />
+                <Bucket title="Nice to Have" tasks={niceTo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} onDateChange={handleDateChange} completing={completing} view={view} />
               </>
             )}
 
