@@ -340,7 +340,7 @@ function TaskRow({
       </span>
 
       {dateLabel && (
-        <div className="relative shrink-0 cursor-pointer" onClick={() => dateInputRef.current?.showPicker()}>
+        <div className="relative shrink-0 cursor-pointer" onClick={() => { try { dateInputRef.current?.showPicker() } catch {} }}>
           <span className={`text-[11px] tabular-nums transition-colors ${done ? 'text-[#555]' : 'text-[#999] hover:text-[#bbb]'}`}>
             {dateLabel}
           </span>
@@ -350,7 +350,7 @@ function TaskRow({
             type="date"
             defaultValue={task.due_date}
             onChange={e => { if (e.target.value) onDateChange(task, e.target.value) }}
-            className="absolute inset-0 opacity-0 pointer-events-none w-full h-full"
+            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
             tabIndex={-1}
           />
         </div>
