@@ -56,6 +56,23 @@ function TypePicker({
   inline?: boolean
 }) {
   const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const close = (e: Event) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    const tid = setTimeout(() => {
+      document.addEventListener('click', close)
+      document.addEventListener('touchstart', close)
+    }, 0)
+    return () => {
+      clearTimeout(tid)
+      document.removeEventListener('click', close)
+      document.removeEventListener('touchstart', close)
+    }
+  }, [open])
 
   const currentIcon = current && current in TYPE_CONFIG
     ? TYPE_CONFIG[current as TaskType].icon
@@ -90,23 +107,6 @@ function TypePicker({
       </div>
     )
   }
-
-  const containerRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const close = (e: Event) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    const tid = setTimeout(() => {
-      document.addEventListener('click', close)
-      document.addEventListener('touchstart', close)
-    }, 0)
-    return () => {
-      clearTimeout(tid)
-      document.removeEventListener('click', close)
-      document.removeEventListener('touchstart', close)
-    }
-  }, [open])
 
   return (
     <div className="relative" ref={containerRef}>
@@ -233,7 +233,7 @@ function BurstParticles() {
       return { p, tx, ty }
     })
 
-    particles.forEach(({ p, tx, ty }, i) => {
+    particles.forEach(({ p, tx, ty }) => {
       const delay = Math.random() * 180
       const dur = 650 + Math.random() * 350
       setTimeout(() => {
@@ -447,6 +447,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
   const [isRecurring, setIsRecurring] = useState(false)
   const [recurDay, setRecurDay] = useState<number>(1)
   const [dueDate, setDueDate] = useState(defaultDueDate('today'))
+  const dueDateInputRef = useRef<HTMLInputElement>(null)
   const [bucket, setBucket] = useState<'must_do' | 'nice_to_have'>('must_do')
   const [newTaskType, setNewTaskType] = useState<TaskType | null>(null)
 
@@ -616,15 +617,19 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
                         ))}
                       </div>
                     ) : (
-                      <div className="relative bg-[#0f0f0f] border border-[#1a1a1a] rounded-md px-2 py-1">
+                      <div
+                        className="relative bg-[#0f0f0f] border border-[#1a1a1a] rounded-md px-2 py-1 cursor-pointer"
+                        onClick={() => { try { dueDateInputRef.current?.showPicker() } catch { dueDateInputRef.current?.focus() } }}
+                      >
                         <span className="text-[11px] text-[#777] pointer-events-none">
                           {new Date(dueDate + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
                         </span>
                         <input
+                          ref={dueDateInputRef}
                           type="date"
                           value={dueDate}
                           onChange={e => { if (e.target.value) setDueDate(e.target.value) }}
-                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                          className="absolute inset-0 opacity-0 pointer-events-none w-full h-full"
                           tabIndex={-1}
                         />
                       </div>
