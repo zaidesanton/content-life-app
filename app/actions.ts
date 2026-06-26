@@ -1,6 +1,6 @@
 'use server'
 
-import { supabase } from '@/lib/supabase'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { revalidatePath } from 'next/cache'
 
 function toDateStr(d: Date): string {
@@ -8,6 +8,7 @@ function toDateStr(d: Date): string {
 }
 
 export async function createTask(formData: FormData) {
+  const supabase = await createSupabaseServerClient()
   const title = (formData.get('title') as string)?.trim()
   const bucket = (formData.get('bucket') as string) || 'must_do'
   const task_type = (formData.get('task_type') as string) || null
@@ -32,11 +33,13 @@ export async function createTask(formData: FormData) {
 }
 
 export async function deleteTask(id: string) {
+  const supabase = await createSupabaseServerClient()
   await supabase.from('tasks').delete().eq('id', id)
   revalidatePath('/')
 }
 
 export async function deleteRecurringTask(id: string) {
+  const supabase = await createSupabaseServerClient()
   // Detach completed instances so CASCADE doesn't remove them
   await supabase.from('tasks')
     .update({ recurring_task_id: null })
@@ -48,17 +51,20 @@ export async function deleteRecurringTask(id: string) {
 }
 
 export async function updateTaskType(id: string, taskType: string | null) {
+  const supabase = await createSupabaseServerClient()
   await supabase.from('tasks').update({ task_type: taskType }).eq('id', id)
   revalidatePath('/')
 }
 
 export async function toggleTask(id: string, completed: boolean) {
+  const supabase = await createSupabaseServerClient()
   const completed_date = completed ? toDateStr(new Date()) : null
   await supabase.from('tasks').update({ completed_date }).eq('id', id)
   revalidatePath('/')
 }
 
 export async function updateTaskDate(id: string, newDate: string) {
+  const supabase = await createSupabaseServerClient()
   const { data: task } = await supabase
     .from('tasks')
     .select('due_date')

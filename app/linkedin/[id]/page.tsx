@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { notFound } from 'next/navigation'
 import PostDetail from './PostDetail'
 
@@ -30,6 +30,7 @@ export type DupeRow = {
 
 export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const supabase = await createSupabaseServerClient()
 
   const [{ data: post, error }, { data: dupes }, { data: tagRows }] = await Promise.all([
     supabase

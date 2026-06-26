@@ -1,9 +1,10 @@
 'use server'
 
-import { supabase } from '@/lib/supabase'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { revalidatePath } from 'next/cache'
 
 export async function saveHookScore(postId: string, score: number) {
+  const supabase = await createSupabaseServerClient()
   const { error } = await supabase
     .from('linkedin_posts')
     .update({ hook_score: score })
@@ -13,6 +14,7 @@ export async function saveHookScore(postId: string, score: number) {
 }
 
 export async function toggleSunset(postId: string, value: boolean) {
+  const supabase = await createSupabaseServerClient()
   const { error } = await supabase
     .from('linkedin_posts')
     .update({ is_sunset: value })
@@ -22,6 +24,7 @@ export async function toggleSunset(postId: string, value: boolean) {
 }
 
 export async function updatePostTags(postId: string, tags: string[]) {
+  const supabase = await createSupabaseServerClient()
   const { error } = await supabase
     .from('linkedin_posts')
     .update({ tags })
@@ -32,6 +35,7 @@ export async function updatePostTags(postId: string, tags: string[]) {
 }
 
 export async function createDraft(hook: string) {
+  const supabase = await createSupabaseServerClient()
   const { error } = await supabase
     .from('linkedin_posts')
     .insert({
@@ -51,6 +55,7 @@ export async function createDraft(hook: string) {
 }
 
 export async function updateDraftHook(postId: string, hook: string) {
+  const supabase = await createSupabaseServerClient()
   const { error } = await supabase
     .from('linkedin_posts')
     .update({ hook })
@@ -59,6 +64,7 @@ export async function updateDraftHook(postId: string, hook: string) {
 }
 
 export async function deleteDraft(postId: string) {
+  const supabase = await createSupabaseServerClient()
   const { error } = await supabase
     .from('linkedin_posts')
     .delete()
@@ -68,6 +74,7 @@ export async function deleteDraft(postId: string) {
 }
 
 export async function fetchPostContent(postId: string): Promise<string | null> {
+  const supabase = await createSupabaseServerClient()
   const { data, error } = await supabase
     .from('linkedin_posts')
     .select('content')

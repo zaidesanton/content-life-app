@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 import LinkedInTable from './LinkedInTable'
 
 export const revalidate = 0
@@ -21,6 +21,7 @@ export type PostRow = {
 }
 
 export default async function LinkedInPage() {
+  const supabase = await createSupabaseServerClient()
   const { data, error } = await supabase
     .from('linkedin_posts')
     .select('id, hook, published_at, reactions, comments, reposts, impressions, hook_score, hook_alternatives, parent_id, is_sunset, post_url, tags, status')

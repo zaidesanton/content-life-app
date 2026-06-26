@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 import TasksView from '@/components/TasksView'
 
 export const revalidate = 0
@@ -19,6 +19,7 @@ function toDateStr(d: Date): string {
 }
 
 export default async function TasksPage() {
+  const supabase = await createSupabaseServerClient()
   const today = new Date()
 
   // Sunday of current week

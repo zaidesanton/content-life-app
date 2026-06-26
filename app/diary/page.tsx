@@ -1,10 +1,11 @@
-import { supabase } from '@/lib/supabase'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
 import DiaryView from './DiaryView'
 import type { DiaryEntry } from './actions'
 
 export const revalidate = 0
 
 export default async function DiaryPage() {
+  const supabase = await createSupabaseServerClient()
   const { data } = await supabase
     .from('diary_entries')
     .select('id, date, score, good_thing, thoughts, created_at')
