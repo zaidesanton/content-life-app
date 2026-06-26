@@ -339,7 +339,26 @@ function TaskRow({
         {task.title}
       </span>
 
-      {dateLabel && (
+      {view === 'today' ? (
+        // Daily view: a calendar icon opens the same date picker so the day can still be changed.
+        // (Showing the literal date here would be redundant — every task is already "today".)
+        <div className="relative shrink-0 cursor-pointer" onClick={() => { try { dateInputRef.current?.showPicker() } catch {} }} title="Change day">
+          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
+            className={`transition-colors ${done ? 'text-[#555]' : 'text-[#777] hover:text-[#bbb]'}`}>
+            <rect x="1.5" y="2.5" width="11" height="10" rx="1.5"/>
+            <path d="M1.5 5.5h11M4.5 1v2.5M9.5 1v2.5"/>
+          </svg>
+          <input
+            ref={dateInputRef}
+            key={task.due_date}
+            type="date"
+            defaultValue={task.due_date}
+            onChange={e => { if (e.target.value) onDateChange(task, e.target.value) }}
+            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+            tabIndex={-1}
+          />
+        </div>
+      ) : dateLabel && (
         <div className="relative shrink-0 cursor-pointer" onClick={() => { try { dateInputRef.current?.showPicker() } catch {} }}>
           <span className={`text-[11px] tabular-nums transition-colors ${done ? 'text-[#555]' : 'text-[#999] hover:text-[#bbb]'}`}>
             {dateLabel}
