@@ -12,6 +12,7 @@ export async function createTask(formData: FormData) {
   const title = (formData.get('title') as string)?.trim()
   const bucket = (formData.get('bucket') as string) || 'must_do'
   const task_type = (formData.get('task_type') as string) || null
+  const description = (formData.get('description') as string)?.trim() || null
   const is_recurring = formData.get('is_recurring') === 'true'
 
   if (!title) return
@@ -23,10 +24,10 @@ export async function createTask(formData: FormData) {
     // Just store the template — page.tsx generates instances on demand
     await supabase
       .from('recurring_tasks')
-      .insert({ title, bucket, task_type, recurrence_day })
+      .insert({ title, bucket, task_type, description, recurrence_day })
   } else {
     const due_date = (formData.get('due_date') as string) || toDateStr(new Date())
-    await supabase.from('tasks').insert({ title, bucket, task_type, due_date })
+    await supabase.from('tasks').insert({ title, bucket, task_type, description, due_date })
   }
 
   revalidatePath('/')
@@ -53,6 +54,13 @@ export async function deleteRecurringTask(id: string) {
 export async function updateTaskType(id: string, taskType: string | null) {
   const supabase = await createSupabaseServerClient()
   await supabase.from('tasks').update({ task_type: taskType }).eq('id', id)
+  revalidatePath('/')
+}
+
+export async function updateTaskDescription(id: string, description: string | null) {
+  const supabase = await createSupabaseServerClient()
+  const clean = description?.trim() || null
+  await supabase.from('tasks').update({ description: clean }).eq('id', id)
   revalidatePath('/')
 }
 

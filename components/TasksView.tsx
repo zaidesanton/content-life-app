@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
 import type { Task } from '@/app/page'
-import { createTask, toggleTask, deleteTask, deleteRecurringTask, updateTaskType, updateTaskDate } from '@/app/actions'
+import { createTask, toggleTask, deleteTask, deleteRecurringTask, updateTaskType, updateTaskDate, updateTaskDescription } from '@/app/actions'
 import PageTabs from '@/components/PageTabs'
 
 type View = 'today' | 'this_week' | 'next_week'
@@ -303,20 +303,42 @@ const DAY_LABELS: { day: number; short: string }[] = [
 
 // ── TaskRow ───────────────────────────────────────────────────────────────────
 
+function NoteSvg() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2.5 2.5h9v6l-2.5 2.5h-6.5z"/>
+      <path d="M11.5 8.5H9v2.5"/>
+      <path d="M4.5 5h5M4.5 7h3"/>
+    </svg>
+  )
+}
+
 function TaskRow({
-  task, onToggle, onDelete, onTypeChange, onDateChange, isAnimating, view,
+  task, onToggle, onDelete, onTypeChange, onDateChange, onDescriptionChange, isAnimating, view,
 }: {
   task: Task
   onToggle: (t: Task) => void
   onDelete: (t: Task) => void
   onTypeChange: (t: Task, type: TaskType | null) => void
   onDateChange: (t: Task, newDate: string) => void
+  onDescriptionChange: (t: Task, description: string | null) => void
   isAnimating: boolean
   view: View
 }) {
   const done = isCompleted(task)
   const isRecurring = !!task.recurring_task_id
   const dateInputRef = useRef<HTMLInputElement>(null)
+  const hasDescription = !!task.description?.trim()
+  const [showNote, setShowNote] = useState(hasDescription)
+  const [draft, setDraft] = useState(task.description ?? '')
+
+  useEffect(() => { setDraft(task.description ?? '') }, [task.description])
+
+  function commitNote() {
+    const next = draft.trim() || null
+    if (next !== (task.description ?? null)) onDescriptionChange(task, next)
+    if (!next) setShowNote(false)
+  }
 
   const dateLabel = view === 'today'
     ? ''
@@ -325,7 +347,8 @@ function TaskRow({
       })
 
   return (
-    <div className={`group flex items-center gap-2.5 py-2 transition-all duration-500 ${isAnimating ? 'opacity-0 translate-y-1' : ''}`}>
+   <div className={`group transition-all duration-500 ${isAnimating ? 'opacity-0 translate-y-1' : ''}`}>
+    <div className="flex items-center gap-2.5 py-2">
       <button
         onClick={() => onToggle(task)}
         className={`w-[15px] h-[15px] rounded-full border flex items-center justify-center shrink-0 transition-colors ${
@@ -388,6 +411,16 @@ function TaskRow({
       )}
 
       <button
+        onClick={() => setShowNote(v => !v)}
+        className={`transition-colors shrink-0 px-1 ${
+          hasDescription ? 'text-[#777] hover:text-[#bbb]' : 'text-[#333] hover:text-[#888] opacity-0 group-hover:opacity-100'
+        }`}
+        title={hasDescription ? 'Show note' : 'Add a note'}
+      >
+        <NoteSvg />
+      </button>
+
+      <button
         onClick={() => onDelete(task)}
         className="text-[#444] hover:text-[#999] transition-colors shrink-0 px-1"
         title={isRecurring ? 'Delete recurring series' : 'Delete task'}
@@ -397,13 +430,27 @@ function TaskRow({
         </svg>
       </button>
     </div>
+
+    {showNote && (
+      <div className="pl-[25px] pr-1 pb-2 -mt-0.5">
+        <textarea
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onBlur={commitNote}
+          placeholder="Add a note…"
+          rows={draft.split('\n').length > 2 ? Math.min(draft.split('\n').length, 8) : 2}
+          className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-md px-2.5 py-1.5 text-[12px] leading-relaxed text-[#b0b0b0] placeholder:text-[#3a3a3a] focus:outline-none focus:border-[#2c2c2c] resize-none whitespace-pre-wrap"
+        />
+      </div>
+    )}
+   </div>
   )
 }
 
 // ── Bucket ────────────────────────────────────────────────────────────────────
 
 function Bucket({
-  title, tasks, onToggle, onDelete, onTypeChange, onDateChange, completing, view,
+  title, tasks, onToggle, onDelete, onTypeChange, onDateChange, onDescriptionChange, completing, view,
 }: {
   title: string
   tasks: Task[]
@@ -411,6 +458,7 @@ function Bucket({
   onDelete: (t: Task) => void
   onTypeChange: (t: Task, type: TaskType | null) => void
   onDateChange: (t: Task, newDate: string) => void
+  onDescriptionChange: (t: Task, description: string | null) => void
   completing: Set<string>
   view: View
 }) {
@@ -437,6 +485,7 @@ function Bucket({
             onDelete={onDelete}
             onTypeChange={onTypeChange}
             onDateChange={onDateChange}
+            onDescriptionChange={onDescriptionChange}
             isAnimating={completing.has(String(task.id))}
             view={view}
           />
@@ -462,6 +511,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
   const [doneForSession, setDoneForSession] = useState(false)
 
   const [addTitle, setAddTitle] = useState('')
+  const [addDescription, setAddDescription] = useState('')
   const [formExpanded, setFormExpanded] = useState(false)
   const [isRecurring, setIsRecurring] = useState(false)
   const [recurDay, setRecurDay] = useState<number>(1)
@@ -538,6 +588,11 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
     startTransition(() => updateTaskType(String(task.id), type))
   }
 
+  function handleDescriptionChange(task: Task, description: string | null) {
+    setLocalTasks(ts => ts.map(t => t.id === task.id ? { ...t, description } : t))
+    startTransition(() => updateTaskDescription(String(task.id), description))
+  }
+
   function handleDateChange(task: Task, newDate: string) {
     setLocalTasks(ts => ts.map(t => t.id === task.id ? { ...t, due_date: newDate } : t))
     startTransition(() => updateTaskDate(String(task.id), newDate))
@@ -548,6 +603,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
     const title = addTitle.trim()
     if (!title) return
 
+    const description = addDescription.trim()
+
     const fd = new FormData()
     fd.set('title', title)
     fd.set('bucket', bucket)
@@ -555,6 +612,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
     if (isRecurring) fd.set('recurrence_day', String(recurDay))
     else fd.set('due_date', dueDate)
     if (newTaskType) fd.set('task_type', newTaskType)
+    if (description) fd.set('description', description)
 
     // Optimistic add for non-recurring tasks only
     if (!isRecurring) {
@@ -567,11 +625,13 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
         completed_date: null,
         category: null,
         task_type: newTaskType,
+        description: description || null,
       }
       setLocalTasks(ts => [...ts, newTask])
     }
 
     setAddTitle('')
+    setAddDescription('')
     setIsRecurring(false)
     setFormExpanded(false)
     startTransition(() => createTask(fd))
@@ -620,6 +680,15 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
                   autoComplete="off"
                   className="w-full bg-[#111] border border-[#252525] rounded-lg px-3 py-2.5 text-[13px] text-[#ccc] placeholder:text-[#444] focus:outline-none focus:border-[#333]"
                 />
+                {formExpanded && (
+                  <textarea
+                    value={addDescription}
+                    onChange={e => setAddDescription(e.target.value)}
+                    placeholder="Notes (optional)…"
+                    rows={2}
+                    className="w-full bg-[#0d0d0d] border border-[#1f1f1f] rounded-lg px-3 py-2 text-[12px] leading-relaxed text-[#b8b8b8] placeholder:text-[#444] focus:outline-none focus:border-[#2c2c2c] resize-none whitespace-pre-wrap"
+                  />
+                )}
                 {formExpanded && (
                   <div className="flex items-center gap-2 flex-wrap">
                     {isRecurring ? (
@@ -681,8 +750,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
               <AllDoneScreen />
             ) : (
               <>
-                <Bucket title="Must Do"      tasks={mustDo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} onDateChange={handleDateChange} completing={completing} view={view} />
-                <Bucket title="Nice to Have" tasks={niceTo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} onDateChange={handleDateChange} completing={completing} view={view} />
+                <Bucket title="Must Do"      tasks={mustDo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} onDateChange={handleDateChange} onDescriptionChange={handleDescriptionChange} completing={completing} view={view} />
+                <Bucket title="Nice to Have" tasks={niceTo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} onDateChange={handleDateChange} onDescriptionChange={handleDescriptionChange} completing={completing} view={view} />
               </>
             )}
 

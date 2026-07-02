@@ -12,6 +12,7 @@ export type Task = {
   completed_date: string | null  // YYYY-MM-DD
   category: string | null
   task_type: string | null
+  description: string | null
 }
 
 function toDateStr(d: Date): string {
@@ -36,7 +37,7 @@ export default async function TasksPage() {
   // Fetch existing tasks in window
   const { data: existing } = await supabase
     .from('tasks')
-    .select('id, title, bucket, task_type, category, due_date, recurring_task_id, completed_date')
+    .select('id, title, bucket, task_type, category, description, due_date, recurring_task_id, completed_date')
     .gte('due_date', windowStart)
     .lte('due_date', windowEnd)
     .order('due_date', { ascending: true })
@@ -44,7 +45,7 @@ export default async function TasksPage() {
   // On-demand: generate any missing recurring instances for this window
   const { data: recurringTasks } = await supabase
     .from('recurring_tasks')
-    .select('id, title, bucket, task_type, recurrence_day')
+    .select('id, title, bucket, task_type, description, recurrence_day')
 
   let tasks = existing ?? []
 
@@ -59,6 +60,7 @@ export default async function TasksPage() {
       title: string
       bucket: string
       task_type: string | null
+      description: string | null
       category: null
       due_date: string
       recurring_task_id: string
@@ -74,6 +76,7 @@ export default async function TasksPage() {
               title: rt.title,
               bucket: rt.bucket,
               task_type: rt.task_type,
+              description: rt.description,
               category: null,
               due_date: ds,
               recurring_task_id: rt.id,
@@ -89,7 +92,7 @@ export default async function TasksPage() {
       // Re-fetch to get DB-assigned IDs for the new instances
       const { data: fresh } = await supabase
         .from('tasks')
-        .select('id, title, bucket, task_type, category, due_date, recurring_task_id, completed_date')
+        .select('id, title, bucket, task_type, category, description, due_date, recurring_task_id, completed_date')
         .gte('due_date', windowStart)
         .lte('due_date', windowEnd)
         .order('due_date', { ascending: true })
@@ -102,7 +105,7 @@ export default async function TasksPage() {
   pastStart.setDate(today.getDate() - 60)
   const { data: overdue } = await supabase
     .from('tasks')
-    .select('id, title, bucket, task_type, category, due_date, recurring_task_id, completed_date')
+    .select('id, title, bucket, task_type, category, description, due_date, recurring_task_id, completed_date')
     .lt('due_date', windowStart)
     .gte('due_date', toDateStr(pastStart))
     .is('completed_date', null)
