@@ -329,7 +329,7 @@ function TaskRow({
   const isRecurring = !!task.recurring_task_id
   const dateInputRef = useRef<HTMLInputElement>(null)
   const hasDescription = !!task.description?.trim()
-  const [showNote, setShowNote] = useState(hasDescription)
+  const [showNote, setShowNote] = useState(false)
   const [draft, setDraft] = useState(task.description ?? '')
 
   useEffect(() => { setDraft(task.description ?? '') }, [task.description])
