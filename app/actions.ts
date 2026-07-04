@@ -41,12 +41,13 @@ export async function deleteTask(id: string) {
 
 export async function deleteRecurringTask(id: string) {
   const supabase = await createSupabaseServerClient()
-  // Detach completed instances so CASCADE doesn't remove them
+  // Detach resolved instances (completed OR marked won't-do) so CASCADE keeps
+  // them as history; only unresolved future instances get removed.
   await supabase.from('tasks')
     .update({ recurring_task_id: null })
     .eq('recurring_task_id', id)
-    .not('completed_date', 'is', null)
-  // ON DELETE CASCADE removes remaining (uncompleted) instances
+    .or('completed_date.not.is.null,skipped_date.not.is.null')
+  // ON DELETE CASCADE removes remaining (unresolved) instances
   await supabase.from('recurring_tasks').delete().eq('id', id)
   revalidatePath('/')
 }
@@ -67,7 +68,20 @@ export async function updateTaskDescription(id: string, description: string | nu
 export async function toggleTask(id: string, completed: boolean) {
   const supabase = await createSupabaseServerClient()
   const completed_date = completed ? toDateStr(new Date()) : null
-  await supabase.from('tasks').update({ completed_date }).eq('id', id)
+  // Completing a task clears any "won't do" mark — the two are mutually exclusive.
+  const patch = completed ? { completed_date, skipped_date: null } : { completed_date }
+  await supabase.from('tasks').update(patch).eq('id', id)
+  revalidatePath('/')
+}
+
+// Mark a task (or a single recurring instance) as "won't do (but was planned)".
+// Distinct from deletion: the row stays, so recurring series are untouched.
+export async function skipTask(id: string, skipped: boolean) {
+  const supabase = await createSupabaseServerClient()
+  const skipped_date = skipped ? toDateStr(new Date()) : null
+  // Skipping clears any completion — the two are mutually exclusive.
+  const patch = skipped ? { skipped_date, completed_date: null } : { skipped_date }
+  await supabase.from('tasks').update(patch).eq('id', id)
   revalidatePath('/')
 }
 

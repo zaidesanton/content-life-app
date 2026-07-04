@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
 import type { Task } from '@/app/page'
-import { createTask, toggleTask, deleteTask, deleteRecurringTask, updateTaskType, updateTaskDate, updateTaskDescription } from '@/app/actions'
+import { createTask, toggleTask, deleteTask, deleteRecurringTask, updateTaskType, updateTaskDate, updateTaskDescription, skipTask } from '@/app/actions'
 import PageTabs from '@/components/PageTabs'
 
 type View = 'today' | 'this_week' | 'next_week'
@@ -192,10 +192,19 @@ function isCompleted(task: Task): boolean {
   return !!task.completed_date
 }
 
+function isSkipped(task: Task): boolean {
+  return !!task.skipped_date
+}
+
+// Resolved = done with, either way: completed OR marked "won't do".
+function isResolved(task: Task): boolean {
+  return !!task.completed_date || !!task.skipped_date
+}
+
 function isTaskInView(task: Task, view: View): boolean {
   const today = todayISO()
   if (view === 'today') {
-    return task.due_date === today || (task.due_date < today && !task.completed_date)
+    return task.due_date === today || (task.due_date < today && !isResolved(task))
   }
   const [start, end] = weekRange(view === 'next_week' ? 1 : 0)
   return task.due_date >= start && task.due_date <= end
@@ -313,8 +322,18 @@ function NoteSvg() {
   )
 }
 
+// Circle-with-slash — "won't do (but was planned)"
+function BanSvg() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
+      <circle cx="7" cy="7" r="5.2"/>
+      <line x1="3.3" y1="3.3" x2="10.7" y2="10.7"/>
+    </svg>
+  )
+}
+
 function TaskRow({
-  task, onToggle, onDelete, onTypeChange, onDateChange, onDescriptionChange, isAnimating, view,
+  task, onToggle, onDelete, onTypeChange, onDateChange, onDescriptionChange, onSkip, isAnimating, view,
 }: {
   task: Task
   onToggle: (t: Task) => void
@@ -322,10 +341,12 @@ function TaskRow({
   onTypeChange: (t: Task, type: TaskType | null) => void
   onDateChange: (t: Task, newDate: string) => void
   onDescriptionChange: (t: Task, description: string | null) => void
+  onSkip: (t: Task) => void
   isAnimating: boolean
   view: View
 }) {
   const done = isCompleted(task)
+  const skipped = isSkipped(task)
   const isRecurring = !!task.recurring_task_id
   const dateInputRef = useRef<HTMLInputElement>(null)
   const hasDescription = !!task.description?.trim()
@@ -358,8 +379,15 @@ function TaskRow({
         {done && <span className="text-[8px] text-[#555]">✓</span>}
       </button>
 
-      <span className={`text-[13px] flex-1 transition-colors duration-200 ${done ? 'line-through text-[#666]' : 'text-[#d4d4d4]'}`}>
+      <span className={`text-[13px] flex-1 transition-colors duration-200 ${
+        done ? 'line-through text-[#666]' : skipped ? 'line-through italic text-[#5c5c5c]' : 'text-[#d4d4d4]'
+      }`}>
         {task.title}
+        {skipped && (
+          <span className="ml-2 align-middle text-[9px] not-italic uppercase tracking-wide text-[#9a6a6a] border border-[#3a2b2b] rounded px-1 py-[1px]">
+            won&apos;t do
+          </span>
+        )}
       </span>
 
       {view === 'today' ? (
@@ -411,6 +439,16 @@ function TaskRow({
       )}
 
       <button
+        onClick={() => onSkip(task)}
+        className={`transition-colors shrink-0 px-1 ${
+          skipped ? 'text-[#a06a6a] hover:text-[#c98a8a]' : 'text-[#333] hover:text-[#888] opacity-0 group-hover:opacity-100'
+        }`}
+        title={skipped ? "Undo — didn't skip after all" : "Won't do (but was planned)"}
+      >
+        <BanSvg />
+      </button>
+
+      <button
         onClick={() => setShowNote(v => !v)}
         className={`transition-colors shrink-0 px-1 ${
           hasDescription ? 'text-[#777] hover:text-[#bbb]' : 'text-[#333] hover:text-[#888] opacity-0 group-hover:opacity-100'
@@ -450,7 +488,7 @@ function TaskRow({
 // ── Bucket ────────────────────────────────────────────────────────────────────
 
 function Bucket({
-  title, tasks, onToggle, onDelete, onTypeChange, onDateChange, onDescriptionChange, completing, view,
+  title, tasks, onToggle, onDelete, onTypeChange, onDateChange, onDescriptionChange, onSkip, completing, view,
 }: {
   title: string
   tasks: Task[]
@@ -459,13 +497,14 @@ function Bucket({
   onTypeChange: (t: Task, type: TaskType | null) => void
   onDateChange: (t: Task, newDate: string) => void
   onDescriptionChange: (t: Task, description: string | null) => void
+  onSkip: (t: Task) => void
   completing: Set<string>
   view: View
 }) {
   const sorted = useMemo(() => {
     return [...tasks].sort((a, b) => {
-      const aDone = isCompleted(a) && !completing.has(String(a.id)) ? 1 : 0
-      const bDone = isCompleted(b) && !completing.has(String(b.id)) ? 1 : 0
+      const aDone = isResolved(a) && !completing.has(String(a.id)) ? 1 : 0
+      const bDone = isResolved(b) && !completing.has(String(b.id)) ? 1 : 0
       if (aDone !== bDone) return aDone - bDone
       return a.due_date < b.due_date ? -1 : 1
     })
@@ -486,6 +525,7 @@ function Bucket({
             onTypeChange={onTypeChange}
             onDateChange={onDateChange}
             onDescriptionChange={onDescriptionChange}
+            onSkip={onSkip}
             isAnimating={completing.has(String(task.id))}
             view={view}
           />
@@ -532,8 +572,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
   const niceTo = viewTasks.filter(t => t.bucket === 'nice_to_have')
   const nextWeekCount = localTasks.filter(t => isTaskInView(t, 'next_week')).length
 
-  // Show rest image when all tasks in view are done (and no completing animation / burst running)
-  const allViewDone = viewTasks.every(t => isCompleted(t))
+  // Show rest image when every task in view is resolved (done or won't-do)
+  const allViewDone = viewTasks.every(t => isResolved(t))
   const showRest = doneForSession || (allViewDone && completing.size === 0 && !burstActive)
 
   function handleDelete(task: Task) {
@@ -562,7 +602,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
 
       // Detect if this was the last incomplete task in view
       const vt = updatedTasks.filter(t => isTaskInView(t, view))
-      const willBeAllDone = vt.every(t => isCompleted(t))
+      const willBeAllDone = vt.every(t => isResolved(t))
 
       if (willBeAllDone) {
         // Sequence: task exit (500ms) → burst (900ms) → rest image fades in
@@ -591,6 +631,14 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
   function handleDescriptionChange(task: Task, description: string | null) {
     setLocalTasks(ts => ts.map(t => t.id === task.id ? { ...t, description } : t))
     startTransition(() => updateTaskDescription(String(task.id), description))
+  }
+
+  function handleSkip(task: Task) {
+    const next = !isSkipped(task)
+    setLocalTasks(ts => ts.map(t => t.id === task.id
+      ? { ...t, skipped_date: next ? todayISO() : null, completed_date: next ? null : t.completed_date }
+      : t))
+    startTransition(() => skipTask(String(task.id), next))
   }
 
   function handleDateChange(task: Task, newDate: string) {
@@ -623,6 +671,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
         due_date: dueDate,
         recurring_task_id: null,
         completed_date: null,
+        skipped_date: null,
         category: null,
         task_type: newTaskType,
         description: description || null,
@@ -750,8 +799,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
               <AllDoneScreen />
             ) : (
               <>
-                <Bucket title="Must Do"      tasks={mustDo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} onDateChange={handleDateChange} onDescriptionChange={handleDescriptionChange} completing={completing} view={view} />
-                <Bucket title="Nice to Have" tasks={niceTo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} onDateChange={handleDateChange} onDescriptionChange={handleDescriptionChange} completing={completing} view={view} />
+                <Bucket title="Must Do"      tasks={mustDo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} onDateChange={handleDateChange} onDescriptionChange={handleDescriptionChange} onSkip={handleSkip} completing={completing} view={view} />
+                <Bucket title="Nice to Have" tasks={niceTo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} onDateChange={handleDateChange} onDescriptionChange={handleDescriptionChange} onSkip={handleSkip} completing={completing} view={view} />
               </>
             )}
 
