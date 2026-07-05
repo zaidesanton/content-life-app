@@ -2,9 +2,24 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { revalidatePath } from 'next/cache'
+import { parseOccId, toDateStr } from '@/lib/recurrence'
 
-function toDateStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+type SupabaseServer = Awaited<ReturnType<typeof createSupabaseServerClient>>
+
+// Merge a patch into the exception row for one recurring occurrence
+// (recurring_task_id + occurrence_date). Only the columns in `patch` change.
+async function upsertException(
+  supabase: SupabaseServer,
+  recurringTaskId: string,
+  occurrenceDate: string,
+  patch: Record<string, string | null>,
+) {
+  await supabase
+    .from('recurring_exceptions')
+    .upsert(
+      { recurring_task_id: recurringTaskId, occurrence_date: occurrenceDate, ...patch },
+      { onConflict: 'recurring_task_id,occurrence_date' },
+    )
 }
 
 export async function createTask(formData: FormData) {
@@ -18,13 +33,19 @@ export async function createTask(formData: FormData) {
   if (!title) return
 
   if (is_recurring) {
-    const recurrence_day = parseInt(formData.get('recurrence_day') as string)
-    if (isNaN(recurrence_day)) return
+    const frequency = (formData.get('frequency') as string) === 'daily' ? 'daily' : 'weekly'
+    // recurrence_day only matters for weekly; store 0 for daily as a filler.
+    const recurrence_day = frequency === 'weekly'
+      ? parseInt(formData.get('recurrence_day') as string)
+      : 0
+    if (frequency === 'weekly' && isNaN(recurrence_day)) return
 
-    // Just store the template — page.tsx generates instances on demand
-    await supabase
-      .from('recurring_tasks')
-      .insert({ title, bucket, task_type, description, recurrence_day })
+    // Store the rule only — page.tsx expands it on read. starts_on = today so
+    // it doesn't backfill into the past.
+    await supabase.from('recurring_tasks').insert({
+      title, bucket, task_type, description,
+      recurrence_day, frequency, starts_on: toDateStr(new Date()),
+    })
   } else {
     const due_date = (formData.get('due_date') as string) || toDateStr(new Date())
     await supabase.from('tasks').insert({ title, bucket, task_type, description, due_date })
@@ -35,33 +56,48 @@ export async function createTask(formData: FormData) {
 
 export async function deleteTask(id: string) {
   const supabase = await createSupabaseServerClient()
-  await supabase.from('tasks').delete().eq('id', id)
+  const occ = parseOccId(id)
+  if (occ) {
+    // Deleting a single recurring occurrence = skip it (the series is untouched).
+    await upsertException(supabase, occ.recurringTaskId, occ.occurrenceDate, {
+      skipped_date: toDateStr(new Date()),
+      completed_date: null,
+    })
+  } else {
+    await supabase.from('tasks').delete().eq('id', id)
+  }
   revalidatePath('/')
 }
 
 export async function deleteRecurringTask(id: string) {
   const supabase = await createSupabaseServerClient()
-  // Detach resolved instances (completed OR marked won't-do) so CASCADE keeps
-  // them as history; only unresolved future instances get removed.
-  await supabase.from('tasks')
-    .update({ recurring_task_id: null })
-    .eq('recurring_task_id', id)
-    .or('completed_date.not.is.null,skipped_date.not.is.null')
-  // ON DELETE CASCADE removes remaining (unresolved) instances
+  // Detach any leftover placeholder instance rows so the FK doesn't block the
+  // delete, then remove the rule. Its exceptions go via ON DELETE CASCADE.
+  await supabase.from('tasks').update({ recurring_task_id: null }).eq('recurring_task_id', id)
   await supabase.from('recurring_tasks').delete().eq('id', id)
   revalidatePath('/')
 }
 
 export async function updateTaskType(id: string, taskType: string | null) {
   const supabase = await createSupabaseServerClient()
-  await supabase.from('tasks').update({ task_type: taskType }).eq('id', id)
+  const occ = parseOccId(id)
+  if (occ) {
+    await upsertException(supabase, occ.recurringTaskId, occ.occurrenceDate, { task_type: taskType })
+  } else {
+    await supabase.from('tasks').update({ task_type: taskType }).eq('id', id)
+  }
   revalidatePath('/')
 }
 
 export async function updateTaskDescription(id: string, description: string | null) {
   const supabase = await createSupabaseServerClient()
   const clean = description?.trim() || null
-  await supabase.from('tasks').update({ description: clean }).eq('id', id)
+  const occ = parseOccId(id)
+  if (occ) {
+    await upsertException(supabase, occ.recurringTaskId, occ.occurrenceDate, { description: clean })
+  } else {
+    await supabase.from('tasks').update({ description: clean }).eq('id', id)
+  }
   revalidatePath('/')
 }
 
@@ -69,13 +105,18 @@ export async function updateTaskTitle(id: string, title: string) {
   const supabase = await createSupabaseServerClient()
   const clean = title.trim()
   if (!clean) return
-  await supabase.from('tasks').update({ title: clean }).eq('id', id)
+  const occ = parseOccId(id)
+  if (occ) {
+    await upsertException(supabase, occ.recurringTaskId, occ.occurrenceDate, { title: clean })
+  } else {
+    await supabase.from('tasks').update({ title: clean }).eq('id', id)
+  }
   revalidatePath('/')
 }
 
-// Edit a recurring series: update the template AND propagate to every instance,
-// so the change shows on already-generated rows and all future ones. Used when
-// the user picks "whole series" after editing a recurring task's title/note.
+// Edit a recurring series: just update the rule. Instances are generated from
+// it on read, so the change shows everywhere immediately — no per-row fan-out.
+// (Per-instance overrides in recurring_exceptions still win for their date.)
 export async function updateRecurringSeries(
   recurringTaskId: string,
   patch: { title?: string; description?: string | null },
@@ -92,32 +133,50 @@ export async function updateRecurringSeries(
   if (Object.keys(fields).length === 0) return
 
   await supabase.from('recurring_tasks').update(fields).eq('id', recurringTaskId)
-  await supabase.from('tasks').update(fields).eq('recurring_task_id', recurringTaskId)
   revalidatePath('/')
 }
 
 export async function toggleTask(id: string, completed: boolean) {
   const supabase = await createSupabaseServerClient()
   const completed_date = completed ? toDateStr(new Date()) : null
-  // Completing a task clears any "won't do" mark — the two are mutually exclusive.
-  const patch = completed ? { completed_date, skipped_date: null } : { completed_date }
-  await supabase.from('tasks').update(patch).eq('id', id)
+  const occ = parseOccId(id)
+  if (occ) {
+    // Completing clears any "won't do" mark (mutually exclusive).
+    await upsertException(supabase, occ.recurringTaskId, occ.occurrenceDate,
+      completed ? { completed_date, skipped_date: null } : { completed_date })
+  } else {
+    const patch = completed ? { completed_date, skipped_date: null } : { completed_date }
+    await supabase.from('tasks').update(patch).eq('id', id)
+  }
   revalidatePath('/')
 }
 
-// Mark a task (or a single recurring instance) as "won't do (but was planned)".
-// Distinct from deletion: the row stays, so recurring series are untouched.
+// Mark a task (or a single recurring occurrence) as "won't do (but was planned)".
 export async function skipTask(id: string, skipped: boolean) {
   const supabase = await createSupabaseServerClient()
   const skipped_date = skipped ? toDateStr(new Date()) : null
-  // Skipping clears any completion — the two are mutually exclusive.
-  const patch = skipped ? { skipped_date, completed_date: null } : { skipped_date }
-  await supabase.from('tasks').update(patch).eq('id', id)
+  const occ = parseOccId(id)
+  if (occ) {
+    // Skipping clears any completion (mutually exclusive).
+    await upsertException(supabase, occ.recurringTaskId, occ.occurrenceDate,
+      skipped ? { skipped_date, completed_date: null } : { skipped_date })
+  } else {
+    const patch = skipped ? { skipped_date, completed_date: null } : { skipped_date }
+    await supabase.from('tasks').update(patch).eq('id', id)
+  }
   revalidatePath('/')
 }
 
 export async function updateTaskDate(id: string, newDate: string) {
   const supabase = await createSupabaseServerClient()
+  const occ = parseOccId(id)
+  if (occ) {
+    // Moving one recurring occurrence to another day = an exception.
+    await upsertException(supabase, occ.recurringTaskId, occ.occurrenceDate, { moved_to_date: newDate })
+    revalidatePath('/')
+    return
+  }
+
   const { data: task } = await supabase
     .from('tasks')
     .select('due_date')

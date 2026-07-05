@@ -1,5 +1,7 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import TasksView from '@/components/TasksView'
+import { expandRules, toDateStr } from '@/lib/recurrence'
+import type { RecurringRule, RecurringException } from '@/lib/recurrence'
 
 export const revalidate = 0
 
@@ -14,10 +16,6 @@ export type Task = {
   category: string | null
   task_type: string | null
   description: string | null
-}
-
-function toDateStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 export default async function TasksPage() {
@@ -35,86 +33,51 @@ export default async function TasksPage() {
   const windowStart = toDateStr(weekStart)
   const windowEnd   = toDateStr(nextWeekEnd)
 
-  // Fetch existing tasks in window
-  const { data: existing } = await supabase
+  // ── Recurring occurrences: expand rules over the window, overlay exceptions.
+  // Nothing is written on read — a series can't "run out".
+  const { data: rules } = await supabase
+    .from('recurring_tasks')
+    .select('id, title, bucket, task_type, description, recurrence_day, frequency, starts_on, ends_on')
+
+  const ruleIds = (rules ?? []).map(r => r.id)
+  let exceptions: RecurringException[] = []
+  if (ruleIds.length > 0) {
+    const { data: ex } = await supabase
+      .from('recurring_exceptions')
+      .select('recurring_task_id, occurrence_date, completed_date, skipped_date, moved_to_date, title, description, task_type')
+      .gte('occurrence_date', windowStart)
+      .lte('occurrence_date', windowEnd)
+    exceptions = (ex ?? []) as RecurringException[]
+  }
+
+  const recurring = expandRules(
+    (rules ?? []) as RecurringRule[],
+    exceptions,
+    windowStart,
+    windowEnd,
+  )
+
+  // ── One-off tasks: in-window, plus overdue (up to 60 days back, unresolved).
+  const pastStart = new Date(today)
+  pastStart.setDate(today.getDate() - 60)
+
+  const { data: oneOff } = await supabase
     .from('tasks')
     .select('id, title, bucket, task_type, category, description, due_date, recurring_task_id, completed_date, skipped_date')
-    .gte('due_date', windowStart)
+    .is('recurring_task_id', null)
+    .gte('due_date', toDateStr(pastStart))
     .lte('due_date', windowEnd)
     .order('due_date', { ascending: true })
 
-  // On-demand: generate any missing recurring instances for this window
-  const { data: recurringTasks } = await supabase
-    .from('recurring_tasks')
-    .select('id, title, bucket, task_type, description, recurrence_day')
+  // Overdue one-offs (before this week) only count if still unresolved.
+  const oneOffTasks = (oneOff ?? []).filter(t => {
+    if (t.due_date >= windowStart) return true
+    return !t.completed_date && !t.skipped_date
+  })
 
-  let tasks = existing ?? []
-
-  if (recurringTasks && recurringTasks.length > 0) {
-    const existingKeys = new Set(
-      tasks
-        .filter(t => t.recurring_task_id)
-        .map(t => `${t.recurring_task_id}:${t.due_date}`)
-    )
-
-    const toInsert: Array<{
-      title: string
-      bucket: string
-      task_type: string | null
-      description: string | null
-      category: null
-      due_date: string
-      recurring_task_id: string
-    }> = []
-
-    for (const rt of recurringTasks) {
-      const cur = new Date(weekStart)
-      while (cur <= nextWeekEnd) {
-        if (cur.getDay() === rt.recurrence_day) {
-          const ds = toDateStr(cur)
-          if (!existingKeys.has(`${rt.id}:${ds}`)) {
-            toInsert.push({
-              title: rt.title,
-              bucket: rt.bucket,
-              task_type: rt.task_type,
-              description: rt.description,
-              category: null,
-              due_date: ds,
-              recurring_task_id: rt.id,
-            })
-          }
-        }
-        cur.setDate(cur.getDate() + 1)
-      }
-    }
-
-    if (toInsert.length > 0) {
-      await supabase.from('tasks').insert(toInsert)
-      // Re-fetch to get DB-assigned IDs for the new instances
-      const { data: fresh } = await supabase
-        .from('tasks')
-        .select('id, title, bucket, task_type, category, description, due_date, recurring_task_id, completed_date, skipped_date')
-        .gte('due_date', windowStart)
-        .lte('due_date', windowEnd)
-        .order('due_date', { ascending: true })
-      tasks = fresh ?? []
-    }
-  }
-
-  // Fetch unresolved tasks from before this week (overdue, up to 60 days back).
-  // Skipped ("won't do") past tasks are resolved, so they don't resurface here.
-  const pastStart = new Date(today)
-  pastStart.setDate(today.getDate() - 60)
-  const { data: overdue } = await supabase
-    .from('tasks')
-    .select('id, title, bucket, task_type, category, description, due_date, recurring_task_id, completed_date, skipped_date')
-    .lt('due_date', windowStart)
-    .gte('due_date', toDateStr(pastStart))
-    .is('completed_date', null)
-    .is('skipped_date', null)
-    .order('due_date', { ascending: true })
-
-  const allTasks = [...(overdue ?? []), ...tasks]
+  const allTasks = [...oneOffTasks, ...recurring].sort((a, b) =>
+    a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0,
+  )
 
   return (
     <TasksView tasks={allTasks as Task[]} />

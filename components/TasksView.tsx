@@ -208,8 +208,16 @@ function isTaskInView(task: Task, view: View): boolean {
   if (view === 'today') {
     return task.due_date === today || (task.due_date < today && !isResolved(task))
   }
-  const [start, end] = weekRange(view === 'next_week' ? 1 : 0)
-  return task.due_date >= start && task.due_date <= end
+  if (view === 'next_week') {
+    const [start, end] = weekRange(1)
+    return task.due_date >= start && task.due_date <= end
+  }
+  // this_week: tasks due this week, PLUS anything overdue and still open (shown
+  // with its real — earlier — date so you can see how far behind it is).
+  const [start, end] = weekRange(0)
+  if (task.due_date > end) return false
+  if (task.due_date >= start) return true
+  return !isResolved(task)
 }
 
 // ── Burst + All-Done ──────────────────────────────────────────────────────────
@@ -392,11 +400,13 @@ function TaskRow({
     if (!next) setShowNote(false)
   }
 
-  const dateLabel = view === 'today'
-    ? ''
-    : new Date(task.due_date + 'T12:00:00').toLocaleDateString('en-GB', {
-        weekday: 'short', day: 'numeric', month: 'short',
-      })
+  const fullDateLabel = new Date(task.due_date + 'T12:00:00').toLocaleDateString('en-GB', {
+    weekday: 'short', day: 'numeric', month: 'short',
+  })
+  const isOverdue = task.due_date < todayISO() && !isResolved(task)
+  // In the week views every row shows its date. In Today, only overdue rows do
+  // (so you can see how far behind they are); on-time rows show the day-picker icon.
+  const dateLabel = view === 'today' ? '' : fullDateLabel
 
   return (
    <div className={`group transition-all duration-500 ${isAnimating ? 'opacity-0 translate-y-1' : ''}`}>
@@ -440,24 +450,42 @@ function TaskRow({
       )}
 
       {view === 'today' ? (
-        // Daily view: a calendar icon opens the same date picker so the day can still be changed.
-        // (Showing the literal date here would be redundant — every task is already "today".)
-        <div className="relative shrink-0 cursor-pointer" onClick={() => { try { dateInputRef.current?.showPicker() } catch {} }} title="Change day">
-          <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
-            className={`transition-colors ${done ? 'text-[#555]' : 'text-[#777] hover:text-[#bbb]'}`}>
-            <rect x="1.5" y="2.5" width="11" height="10" rx="1.5"/>
-            <path d="M1.5 5.5h11M4.5 1v2.5M9.5 1v2.5"/>
-          </svg>
-          <input
-            ref={dateInputRef}
-            key={task.due_date}
-            type="date"
-            defaultValue={task.due_date}
-            onChange={e => { if (e.target.value) onDateChange(task, e.target.value) }}
-            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-            tabIndex={-1}
-          />
-        </div>
+        isOverdue ? (
+          // Overdue in Today view: show its real (past) date so you can see how
+          // far behind it is. Still clickable to reschedule.
+          <div className="relative shrink-0 cursor-pointer" onClick={() => { try { dateInputRef.current?.showPicker() } catch {} }} title="Overdue — change day">
+            <span className="text-[11px] tabular-nums text-[#c08a5a] hover:text-[#d9a06a] transition-colors">
+              {fullDateLabel}
+            </span>
+            <input
+              ref={dateInputRef}
+              key={task.due_date}
+              type="date"
+              defaultValue={task.due_date}
+              onChange={e => { if (e.target.value) onDateChange(task, e.target.value) }}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              tabIndex={-1}
+            />
+          </div>
+        ) : (
+          // On-time: a calendar icon opens the date picker so the day can still be changed.
+          <div className="relative shrink-0 cursor-pointer" onClick={() => { try { dateInputRef.current?.showPicker() } catch {} }} title="Change day">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
+              className={`transition-colors ${done ? 'text-[#555]' : 'text-[#777] hover:text-[#bbb]'}`}>
+              <rect x="1.5" y="2.5" width="11" height="10" rx="1.5"/>
+              <path d="M1.5 5.5h11M4.5 1v2.5M9.5 1v2.5"/>
+            </svg>
+            <input
+              ref={dateInputRef}
+              key={task.due_date}
+              type="date"
+              defaultValue={task.due_date}
+              onChange={e => { if (e.target.value) onDateChange(task, e.target.value) }}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              tabIndex={-1}
+            />
+          </div>
+        )
       ) : dateLabel && (
         <div className="relative shrink-0 cursor-pointer" onClick={() => { try { dateInputRef.current?.showPicker() } catch {} }}>
           <span className={`text-[11px] tabular-nums transition-colors ${done ? 'text-[#555]' : 'text-[#999] hover:text-[#bbb]'}`}>
@@ -624,6 +652,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
   const [addDescription, setAddDescription] = useState('')
   const [formExpanded, setFormExpanded] = useState(false)
   const [isRecurring, setIsRecurring] = useState(false)
+  const [recurFreq, setRecurFreq] = useState<'weekly' | 'daily'>('weekly')
   const [recurDay, setRecurDay] = useState<number>(1)
   const [dueDate, setDueDate] = useState(defaultDueDate('today'))
   const dueDateInputRef = useRef<HTMLInputElement>(null)
@@ -742,8 +771,12 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
     fd.set('title', title)
     fd.set('bucket', bucket)
     fd.set('is_recurring', isRecurring ? 'true' : 'false')
-    if (isRecurring) fd.set('recurrence_day', String(recurDay))
-    else fd.set('due_date', dueDate)
+    if (isRecurring) {
+      fd.set('frequency', recurFreq)
+      if (recurFreq === 'weekly') fd.set('recurrence_day', String(recurDay))
+    } else {
+      fd.set('due_date', dueDate)
+    }
     if (newTaskType) fd.set('task_type', newTaskType)
     if (description) fd.set('description', description)
 
@@ -826,8 +859,13 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
                 {formExpanded && (
                   <div className="flex items-center gap-2 flex-wrap">
                     {isRecurring ? (
-                      <div className="flex gap-1">
-                        {DAY_LABELS.map(({ day, short }) => (
+                      <div className="flex gap-1 items-center flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => setRecurFreq(f => f === 'weekly' ? 'daily' : 'weekly')}
+                          className="px-2 py-1 rounded text-[11px] border bg-[#1e1e1e] border-[#333] text-[#ccc] transition-colors"
+                        >{recurFreq === 'weekly' ? 'Weekly' : 'Daily'}</button>
+                        {recurFreq === 'weekly' && DAY_LABELS.map(({ day, short }) => (
                           <button
                             key={day}
                             type="button"
