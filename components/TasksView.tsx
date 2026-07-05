@@ -2,11 +2,13 @@
 
 import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
 import type { Task } from '@/app/page'
-import { createTask, toggleTask, deleteTask, deleteRecurringTask, updateTaskType, updateTaskDate, updateTaskDescription, skipTask } from '@/app/actions'
+import { createTask, toggleTask, deleteTask, deleteRecurringTask, updateTaskType, updateTaskDate, updateTaskDescription, updateTaskTitle, updateRecurringSeries, skipTask } from '@/app/actions'
 import PageTabs from '@/components/PageTabs'
 
 type View = 'today' | 'this_week' | 'next_week'
 type TaskType = 'linkedin' | 'newsletter' | 'home'
+type EditScope = 'instance' | 'series'
+type EditPatch = { title?: string; description?: string | null }
 
 // ── SVG icons ─────────────────────────────────────────────────────────────────
 
@@ -333,14 +335,14 @@ function BanSvg() {
 }
 
 function TaskRow({
-  task, onToggle, onDelete, onTypeChange, onDateChange, onDescriptionChange, onSkip, isAnimating, view,
+  task, onToggle, onDelete, onTypeChange, onDateChange, onEdit, onSkip, isAnimating, view,
 }: {
   task: Task
   onToggle: (t: Task) => void
   onDelete: (t: Task) => void
   onTypeChange: (t: Task, type: TaskType | null) => void
   onDateChange: (t: Task, newDate: string) => void
-  onDescriptionChange: (t: Task, description: string | null) => void
+  onEdit: (t: Task, patch: EditPatch, scope: EditScope) => void
   onSkip: (t: Task) => void
   isAnimating: boolean
   view: View
@@ -349,15 +351,44 @@ function TaskRow({
   const skipped = isSkipped(task)
   const isRecurring = !!task.recurring_task_id
   const dateInputRef = useRef<HTMLInputElement>(null)
-  const hasDescription = !!task.description?.trim()
+
+  // Edits to a recurring task are stashed here until the user picks a scope
+  // (this instance vs. the whole series). Non-recurring edits apply immediately.
+  const [pending, setPending] = useState<EditPatch | null>(null)
+
+  const displayTitle = pending?.title ?? task.title
+  const displayDescription = pending && 'description' in pending ? pending.description : task.description
+  const hasDescription = !!displayDescription?.trim()
+
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState(task.title)
   const [showNote, setShowNote] = useState(false)
   const [draft, setDraft] = useState(task.description ?? '')
 
   useEffect(() => { setDraft(task.description ?? '') }, [task.description])
+  useEffect(() => { setTitleDraft(task.title) }, [task.title])
+
+  // Route an edit: recurring tasks defer to the scope chooser; others save now.
+  function applyEdit(patch: EditPatch) {
+    if (isRecurring) setPending(p => ({ ...(p ?? {}), ...patch }))
+    else onEdit(task, patch, 'instance')
+  }
+
+  function chooseScope(scope: EditScope) {
+    if (pending) onEdit(task, pending, scope)
+    setPending(null)
+  }
+
+  function commitTitle() {
+    setEditingTitle(false)
+    const next = titleDraft.trim()
+    if (!next || next === displayTitle) { setTitleDraft(displayTitle); return }
+    applyEdit({ title: next })
+  }
 
   function commitNote() {
     const next = draft.trim() || null
-    if (next !== (task.description ?? null)) onDescriptionChange(task, next)
+    if (next !== (displayDescription ?? null)) applyEdit({ description: next })
     if (!next) setShowNote(false)
   }
 
@@ -379,16 +410,34 @@ function TaskRow({
         {done && <span className="text-[8px] text-[#555]">✓</span>}
       </button>
 
-      <span className={`text-[13px] flex-1 transition-colors duration-200 ${
-        done ? 'line-through text-[#666]' : skipped ? 'line-through italic text-[#5c5c5c]' : 'text-[#d4d4d4]'
-      }`}>
-        {task.title}
-        {skipped && (
-          <span className="ml-2 align-middle text-[9px] not-italic uppercase tracking-wide text-[#9a6a6a] border border-[#3a2b2b] rounded px-1 py-[1px]">
-            won&apos;t do
-          </span>
-        )}
-      </span>
+      {editingTitle ? (
+        <input
+          autoFocus
+          value={titleDraft}
+          onChange={e => setTitleDraft(e.target.value)}
+          onBlur={commitTitle}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { e.preventDefault(); commitTitle() }
+            else if (e.key === 'Escape') { setTitleDraft(displayTitle); setEditingTitle(false) }
+          }}
+          className="flex-1 min-w-0 bg-[#0d0d0d] border border-[#2c2c2c] rounded px-1.5 py-0.5 text-[13px] text-[#d4d4d4] focus:outline-none focus:border-[#3a3a3a]"
+        />
+      ) : (
+        <span
+          onClick={() => { setTitleDraft(displayTitle); setEditingTitle(true) }}
+          title="Click to edit"
+          className={`text-[13px] flex-1 min-w-0 cursor-text transition-colors duration-200 ${
+            done ? 'line-through text-[#666]' : skipped ? 'line-through italic text-[#5c5c5c]' : 'text-[#d4d4d4]'
+          }`}
+        >
+          {displayTitle}
+          {skipped && (
+            <span className="ml-2 align-middle text-[9px] not-italic uppercase tracking-wide text-[#9a6a6a] border border-[#3a2b2b] rounded px-1 py-[1px]">
+              won&apos;t do
+            </span>
+          )}
+        </span>
+      )}
 
       {view === 'today' ? (
         // Daily view: a calendar icon opens the same date picker so the day can still be changed.
@@ -481,6 +530,27 @@ function TaskRow({
         />
       </div>
     )}
+
+    {pending && isRecurring && (
+      <div className="pl-[25px] pr-1 pb-2 flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] text-[#888]">Apply edit to</span>
+        <button
+          type="button"
+          onClick={() => chooseScope('instance')}
+          className="px-2.5 py-1 rounded-md text-[11px] border border-[#2a2a2a] bg-[#161616] text-[#ccc] hover:bg-[#1e1e1e] transition-colors"
+        >This task only</button>
+        <button
+          type="button"
+          onClick={() => chooseScope('series')}
+          className="px-2.5 py-1 rounded-md text-[11px] border border-[#2a2a2a] bg-[#161616] text-[#ccc] hover:bg-[#1e1e1e] transition-colors"
+        >🔁 Whole series</button>
+        <button
+          type="button"
+          onClick={() => setPending(null)}
+          className="px-2 py-1 rounded-md text-[11px] text-[#666] hover:text-[#999] transition-colors"
+        >Cancel</button>
+      </div>
+    )}
    </div>
   )
 }
@@ -488,7 +558,7 @@ function TaskRow({
 // ── Bucket ────────────────────────────────────────────────────────────────────
 
 function Bucket({
-  title, tasks, onToggle, onDelete, onTypeChange, onDateChange, onDescriptionChange, onSkip, completing, view,
+  title, tasks, onToggle, onDelete, onTypeChange, onDateChange, onEdit, onSkip, completing, view,
 }: {
   title: string
   tasks: Task[]
@@ -496,7 +566,7 @@ function Bucket({
   onDelete: (t: Task) => void
   onTypeChange: (t: Task, type: TaskType | null) => void
   onDateChange: (t: Task, newDate: string) => void
-  onDescriptionChange: (t: Task, description: string | null) => void
+  onEdit: (t: Task, patch: EditPatch, scope: EditScope) => void
   onSkip: (t: Task) => void
   completing: Set<string>
   view: View
@@ -524,7 +594,7 @@ function Bucket({
             onDelete={onDelete}
             onTypeChange={onTypeChange}
             onDateChange={onDateChange}
-            onDescriptionChange={onDescriptionChange}
+            onEdit={onEdit}
             onSkip={onSkip}
             isAnimating={completing.has(String(task.id))}
             view={view}
@@ -628,9 +698,24 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
     startTransition(() => updateTaskType(String(task.id), type))
   }
 
-  function handleDescriptionChange(task: Task, description: string | null) {
-    setLocalTasks(ts => ts.map(t => t.id === task.id ? { ...t, description } : t))
-    startTransition(() => updateTaskDescription(String(task.id), description))
+  function handleEdit(task: Task, patch: EditPatch, scope: EditScope) {
+    // Optimistic: series scope touches every instance of the series; otherwise
+    // just this row.
+    setLocalTasks(ts => ts.map(t => {
+      const hit = scope === 'series' && task.recurring_task_id
+        ? t.recurring_task_id === task.recurring_task_id
+        : t.id === task.id
+      return hit ? { ...t, ...patch } : t
+    }))
+
+    startTransition(() => {
+      if (scope === 'series' && task.recurring_task_id) {
+        updateRecurringSeries(task.recurring_task_id, patch)
+      } else {
+        if (patch.title !== undefined) updateTaskTitle(String(task.id), patch.title)
+        if (patch.description !== undefined) updateTaskDescription(String(task.id), patch.description)
+      }
+    })
   }
 
   function handleSkip(task: Task) {
@@ -799,8 +884,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
               <AllDoneScreen />
             ) : (
               <>
-                <Bucket title="Must Do"      tasks={mustDo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} onDateChange={handleDateChange} onDescriptionChange={handleDescriptionChange} onSkip={handleSkip} completing={completing} view={view} />
-                <Bucket title="Nice to Have" tasks={niceTo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} onDateChange={handleDateChange} onDescriptionChange={handleDescriptionChange} onSkip={handleSkip} completing={completing} view={view} />
+                <Bucket title="Must Do"      tasks={mustDo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} onDateChange={handleDateChange} onEdit={handleEdit} onSkip={handleSkip} completing={completing} view={view} />
+                <Bucket title="Nice to Have" tasks={niceTo} onToggle={handleToggle} onDelete={handleDelete} onTypeChange={handleTypeChange} onDateChange={handleDateChange} onEdit={handleEdit} onSkip={handleSkip} completing={completing} view={view} />
               </>
             )}
 

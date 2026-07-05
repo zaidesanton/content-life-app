@@ -65,6 +65,37 @@ export async function updateTaskDescription(id: string, description: string | nu
   revalidatePath('/')
 }
 
+export async function updateTaskTitle(id: string, title: string) {
+  const supabase = await createSupabaseServerClient()
+  const clean = title.trim()
+  if (!clean) return
+  await supabase.from('tasks').update({ title: clean }).eq('id', id)
+  revalidatePath('/')
+}
+
+// Edit a recurring series: update the template AND propagate to every instance,
+// so the change shows on already-generated rows and all future ones. Used when
+// the user picks "whole series" after editing a recurring task's title/note.
+export async function updateRecurringSeries(
+  recurringTaskId: string,
+  patch: { title?: string; description?: string | null },
+) {
+  const supabase = await createSupabaseServerClient()
+  const fields: { title?: string; description?: string | null } = {}
+  if (patch.title !== undefined) {
+    const t = patch.title.trim()
+    if (t) fields.title = t
+  }
+  if (patch.description !== undefined) {
+    fields.description = patch.description?.trim() || null
+  }
+  if (Object.keys(fields).length === 0) return
+
+  await supabase.from('recurring_tasks').update(fields).eq('id', recurringTaskId)
+  await supabase.from('tasks').update(fields).eq('recurring_task_id', recurringTaskId)
+  revalidatePath('/')
+}
+
 export async function toggleTask(id: string, completed: boolean) {
   const supabase = await createSupabaseServerClient()
   const completed_date = completed ? toDateStr(new Date()) : null
