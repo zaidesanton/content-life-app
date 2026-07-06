@@ -372,8 +372,18 @@ function TaskRow({
   const [titleDraft, setTitleDraft] = useState(task.title)
   const [showNote, setShowNote] = useState(false)
   const [draft, setDraft] = useState(task.description ?? '')
+  const noteRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => { setDraft(task.description ?? '') }, [task.description])
+
+  // Grow the note box to fit its content (wrapped lines included), so long
+  // notes aren't clipped when expanded.
+  useEffect(() => {
+    const el = noteRef.current
+    if (!showNote || !el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [showNote, draft])
   useEffect(() => { setTitleDraft(task.title) }, [task.title])
 
   // Route an edit: recurring tasks defer to the scope chooser; others save now.
@@ -549,12 +559,13 @@ function TaskRow({
     {showNote && (
       <div className="pl-[25px] pr-1 pb-2 -mt-0.5">
         <textarea
+          ref={noteRef}
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onBlur={commitNote}
           placeholder="Add a note…"
-          rows={draft.split('\n').length > 2 ? Math.min(draft.split('\n').length, 8) : 2}
-          className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-md px-2.5 py-1.5 text-[12px] leading-relaxed text-[#b0b0b0] placeholder:text-[#3a3a3a] focus:outline-none focus:border-[#2c2c2c] resize-none whitespace-pre-wrap"
+          rows={2}
+          className="w-full min-h-[3.5rem] max-h-72 overflow-y-auto bg-[#0d0d0d] border border-[#1a1a1a] rounded-md px-2.5 py-1.5 text-[12px] leading-relaxed text-[#b0b0b0] placeholder:text-[#3a3a3a] focus:outline-none focus:border-[#2c2c2c] resize-none whitespace-pre-wrap"
         />
       </div>
     )}
