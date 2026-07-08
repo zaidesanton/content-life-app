@@ -829,8 +829,8 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
 
   return (
     <div className="flex flex-col min-h-full">
-      {/* Mobile: fixed header row — hamburger (from Sidebar) + tabs side-by-side */}
-      <div className="md:hidden fixed top-0 left-14 right-0 z-30 h-14 flex items-center bg-[#0a0a0a] border-b border-[#141414] overflow-hidden">
+      {/* Mobile: fixed header row — full-width tab bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-30 h-14 flex items-center px-2 bg-[#0a0a0a] border-b border-[#141414] overflow-hidden">
         {pageTabs}
       </div>
       {/* Desktop: sticky tab bar — centered to match content */}
