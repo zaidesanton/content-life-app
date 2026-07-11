@@ -4,8 +4,10 @@ import { useState, useTransition, useMemo, useEffect, useRef } from 'react'
 import type { Task } from '@/app/page'
 import { createTask, toggleTask, deleteTask, deleteRecurringTask, updateTaskType, updateTaskDate, updateTaskDescription, updateTaskTitle, updateRecurringSeries, skipTask } from '@/app/actions'
 import PageTabs from '@/components/PageTabs'
+import DraftsPanel from '@/components/DraftsPanel'
+import type { Draft } from '@/components/DraftsPanel'
 
-type View = 'today' | 'this_week' | 'next_week'
+type View = 'today' | 'this_week' | 'next_week' | 'drafts'
 type TaskType = 'linkedin' | 'newsletter' | 'home'
 type EditScope = 'instance' | 'series'
 type EditPatch = { title?: string; description?: string | null }
@@ -646,7 +648,7 @@ function Bucket({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function TasksView({ tasks }: { tasks: Task[] }) {
+export default function TasksView({ tasks, drafts }: { tasks: Task[]; drafts: Draft[] }) {
   const [view, setView] = useState<View>('today')
   const [localTasks, setLocalTasks] = useState<Task[]>(tasks)
   const [completing, setCompleting] = useState<Set<string>>(new Set())
@@ -821,6 +823,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
         { key: 'today',     label: 'Today'     },
         { key: 'this_week', label: 'This Week'  },
         { key: 'next_week', label: 'Next Week'  },
+        { key: 'drafts',    label: 'Drafts'    },
       ]}
       active={view}
       onChange={k => switchView(k as View)}
@@ -841,8 +844,13 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
       </div>
 
       <div className="px-6 md:px-8 pt-4 pb-6 w-full max-w-xl md:mx-auto">
-        <p suppressHydrationWarning className="text-[12px] text-[#aaa] mb-5">{viewSubtitle(view)}</p>
+        <p suppressHydrationWarning className="text-[12px] text-[#aaa] mb-5">
+          {view === 'drafts' ? 'LinkedIn drafts' : viewSubtitle(view)}
+        </p>
 
+        {view === 'drafts' ? (
+          <DraftsPanel drafts={drafts} />
+        ) : (
         <div className="relative">
           {burstActive && <BurstParticles />}
           <div className={`transition-opacity duration-300 ${burstActive ? 'opacity-0' : 'opacity-100'}`}>
@@ -950,6 +958,7 @@ export default function TasksView({ tasks }: { tasks: Task[] }) {
 
           </div>
         </div>
+        )}
       </div>
     </div>
   )

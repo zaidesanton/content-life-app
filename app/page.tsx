@@ -2,6 +2,7 @@ import { createSupabaseServerClient } from '@/lib/supabase-server'
 import TasksView from '@/components/TasksView'
 import { expandRules, toDateStr } from '@/lib/recurrence'
 import type { RecurringRule, RecurringException } from '@/lib/recurrence'
+import type { Draft } from '@/components/DraftsPanel'
 
 export const revalidate = 0
 
@@ -79,7 +80,13 @@ export default async function TasksPage() {
     a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0,
   )
 
+  // ── LinkedIn drafts (newest first).
+  const { data: drafts } = await supabase
+    .from('linkedin_drafts')
+    .select('id, title, content, source_url, status, created_at')
+    .order('created_at', { ascending: false })
+
   return (
-    <TasksView tasks={allTasks as Task[]} />
+    <TasksView tasks={allTasks as Task[]} drafts={(drafts ?? []) as Draft[]} />
   )
 }

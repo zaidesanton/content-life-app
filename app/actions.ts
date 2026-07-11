@@ -48,7 +48,9 @@ export async function createTask(formData: FormData) {
     })
   } else {
     const due_date = (formData.get('due_date') as string) || toDateStr(new Date())
-    await supabase.from('tasks').insert({ title, bucket, task_type, description, due_date })
+    // tasks.description is NOT NULL (default ''); never send an explicit null or
+    // the insert is rejected and the task silently "disappears".
+    await supabase.from('tasks').insert({ title, bucket, task_type, description: description ?? '', due_date })
   }
 
   revalidatePath('/')
@@ -96,7 +98,8 @@ export async function updateTaskDescription(id: string, description: string | nu
   if (occ) {
     await upsertException(supabase, occ.recurringTaskId, occ.occurrenceDate, { description: clean })
   } else {
-    await supabase.from('tasks').update({ description: clean }).eq('id', id)
+    // tasks.description is NOT NULL — coalesce a cleared note to '' not null.
+    await supabase.from('tasks').update({ description: clean ?? '' }).eq('id', id)
   }
   revalidatePath('/')
 }
