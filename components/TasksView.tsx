@@ -6,8 +6,10 @@ import { createTask, toggleTask, deleteTask, deleteRecurringTask, updateTaskType
 import PageTabs from '@/components/PageTabs'
 import DraftsPanel from '@/components/DraftsPanel'
 import type { Draft } from '@/components/DraftsPanel'
+import Sidebar from '@/components/Sidebar'
+import type { Section } from '@/components/Sidebar'
 
-type View = 'today' | 'this_week' | 'next_week' | 'drafts'
+type View = 'today' | 'this_week' | 'next_week'
 type TaskType = 'linkedin' | 'newsletter' | 'home'
 type EditScope = 'instance' | 'series'
 type EditPatch = { title?: string; description?: string | null }
@@ -650,8 +652,20 @@ function Bucket({
 
 export default function TasksView({ tasks, drafts }: { tasks: Task[]; drafts: Draft[] }) {
   const [view, setView] = useState<View>('today')
+  const [section, setSection] = useState<Section>('tasks')
+  // Start collapsed (safe for SSR/hydration), then expand on desktop after mount.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
+  useEffect(() => {
+    if (window.matchMedia('(min-width: 768px)').matches) setSidebarCollapsed(false)
+  }, [])
   const [localTasks, setLocalTasks] = useState<Task[]>(tasks)
   const [completing, setCompleting] = useState<Set<string>>(new Set())
+
+  function selectSection(s: Section) {
+    setSection(s)
+    // On mobile the sidebar is a drawer — close it after picking a section.
+    if (window.matchMedia('(max-width: 767px)').matches) setSidebarCollapsed(true)
+  }
 
   useEffect(() => {
     setLocalTasks(tasks)
@@ -823,32 +837,57 @@ export default function TasksView({ tasks, drafts }: { tasks: Task[]; drafts: Dr
         { key: 'today',     label: 'Today'     },
         { key: 'this_week', label: 'This Week'  },
         { key: 'next_week', label: 'Next Week'  },
-        { key: 'drafts',    label: 'Drafts'    },
       ]}
       active={view}
       onChange={k => switchView(k as View)}
     />
   )
 
+  // Hamburger — opens the drawer on mobile (sidebar is off-screen when collapsed).
+  const menuButton = (
+    <button
+      onClick={() => setSidebarCollapsed(false)}
+      aria-label="Open menu"
+      className="md:hidden p-1.5 rounded-md text-[#888] hover:text-[#ccc] transition-colors shrink-0"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]">
+        <path d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  )
+
   return (
-    <div className="flex flex-col min-h-full">
-      {/* Mobile: fixed header row — full-width tab bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-30 h-14 flex items-center px-2 bg-[#0a0a0a] border-b border-[#141414] overflow-hidden">
-        {pageTabs}
+    <div className="flex min-h-full">
+      <Sidebar
+        section={section}
+        onSelect={selectSection}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(c => !c)}
+      />
+
+      <div className="flex-1 min-w-0 flex flex-col">
+      {/* Mobile: fixed header row — hamburger + tabs / title */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-20 h-14 flex items-center px-2 bg-[#0a0a0a] border-b border-[#141414] overflow-hidden">
+        {menuButton}
+        {section === 'tasks'
+          ? pageTabs
+          : <span className="ml-1 text-[13px] font-medium text-white">LinkedIn drafts</span>}
       </div>
-      {/* Desktop: sticky tab bar — centered to match content */}
-      <div className="hidden md:block sticky top-0 z-20 border-b border-[#141414] bg-[#0a0a0a]">
+      {/* Desktop: sticky header — tabs (tasks) or title (drafts) */}
+      <div className="hidden md:block sticky top-0 z-10 border-b border-[#141414] bg-[#0a0a0a]">
         <div className="max-w-xl mx-auto px-6 md:px-8">
-          {pageTabs}
+          {section === 'tasks'
+            ? pageTabs
+            : <div className="px-4 py-3 text-[13px] font-medium text-white">LinkedIn drafts</div>}
         </div>
       </div>
 
       <div className="px-6 md:px-8 pt-4 pb-6 w-full max-w-xl md:mx-auto">
         <p suppressHydrationWarning className="text-[12px] text-[#aaa] mb-5">
-          {view === 'drafts' ? 'LinkedIn drafts' : viewSubtitle(view)}
+          {section === 'drafts' ? 'LinkedIn drafts' : viewSubtitle(view)}
         </p>
 
-        {view === 'drafts' ? (
+        {section === 'drafts' ? (
           <DraftsPanel drafts={drafts} />
         ) : (
         <div className="relative">
@@ -959,6 +998,7 @@ export default function TasksView({ tasks, drafts }: { tasks: Task[]; drafts: Dr
           </div>
         </div>
         )}
+      </div>
       </div>
     </div>
   )
