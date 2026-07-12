@@ -118,18 +118,21 @@ export function expandRules(
 }
 
 // Expand rules for the display window [windowStart, windowEnd], PLUS carry
-// forward missed recurring occurrences the same way one-off tasks carry: a
+// forward a missed recurring occurrence the same way one-off tasks carry: a
 // recurring task you didn't complete keeps showing as overdue until you resolve
 // it, instead of silently vanishing once its date passes.
 //
-// Expansion runs from `carryStart` (e.g. 60 days back) so pre-window occurrences
-// are visible. For each rule we surface at most ONE overdue occurrence — the
-// most recent still-open one before the window — so a daily rule can't flood the
-// list with weeks of misses (and legacy pre-migration completions, which live on
-// old task rows rather than exceptions, stay collapsed away).
+// Carry rule: for each series we look ONLY at its single most recent *scheduled*
+// occurrence before the window. If that occurrence is still open, we surface it;
+// if it's already done or skipped, we surface nothing. We deliberately never
+// march backwards through older occurrences — otherwise completing the surfaced
+// miss would just reveal the previous week's miss, and the task would appear to
+// "reappear" instead of clearing. This also caps a daily series at one overdue
+// entry and keeps legacy pre-migration history (completed on old task rows, not
+// exceptions) from resurfacing.
 //
 // Retired series (ends_on before the window) are never carried — retiring a
-// recurring task means "stop nagging me", not "resurface every past miss".
+// recurring task means "stop nagging me", not "resurface the last miss".
 export function expandRulesWithCarry(
   rules: RecurringRule[],
   exceptions: RecurringException[],
@@ -145,15 +148,24 @@ export function expandRulesWithCarry(
     rules.filter(r => r.ends_on && r.ends_on < windowStart).map(r => r.id),
   )
 
-  // Most-recent still-open occurrence per rule, strictly before the window.
-  const carried = new Map<string, ExpandedOccurrence>()
+  // The single most recent *scheduled* occurrence per rule before the window.
+  // Keyed on the occurrence's own scheduled date (encoded in the id), not its
+  // possibly-moved due_date.
+  const latestPast = new Map<string, { occ: ExpandedOccurrence; sched: string }>()
   for (const o of all) {
-    if (o.due_date >= windowStart) continue
-    if (o.completed_date || o.skipped_date) continue
     if (retired.has(o.recurring_task_id)) continue
-    const prev = carried.get(o.recurring_task_id)
-    if (!prev || o.due_date > prev.due_date) carried.set(o.recurring_task_id, o)
+    const sched = parseOccId(o.id)?.occurrenceDate ?? o.due_date
+    if (sched >= windowStart) continue
+    const prev = latestPast.get(o.recurring_task_id)
+    if (!prev || sched > prev.sched) latestPast.set(o.recurring_task_id, { occ: o, sched })
   }
 
-  return [...inWindow, ...carried.values()]
+  const carried: ExpandedOccurrence[] = []
+  for (const { occ } of latestPast.values()) {
+    if (occ.completed_date || occ.skipped_date) continue // latest already handled → don't march back
+    if (occ.due_date >= windowStart) continue             // moved into window → already in inWindow
+    carried.push(occ)
+  }
+
+  return [...inWindow, ...carried]
 }
