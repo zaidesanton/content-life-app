@@ -1,6 +1,6 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import TasksView from '@/components/TasksView'
-import { expandRules, toDateStr } from '@/lib/recurrence'
+import { expandRulesWithCarry, toDateStr } from '@/lib/recurrence'
 import type { RecurringRule, RecurringException } from '@/lib/recurrence'
 import type { Draft } from '@/components/DraftsPanel'
 
@@ -34,8 +34,15 @@ export default async function TasksPage() {
   const windowStart = toDateStr(weekStart)
   const windowEnd   = toDateStr(nextWeekEnd)
 
-  // ── Recurring occurrences: expand rules over the window, overlay exceptions.
-  // Nothing is written on read — a series can't "run out".
+  // Overdue window: how far back a missed task carries forward. Same 60-day
+  // horizon for recurring occurrences and one-off tasks.
+  const pastStart = new Date(today)
+  pastStart.setDate(today.getDate() - 60)
+  const carryStart = toDateStr(pastStart)
+
+  // ── Recurring occurrences: expand rules over the window, overlay exceptions,
+  // and carry forward the most recent still-open miss per rule. Nothing is
+  // written on read — a series can't "run out".
   const { data: rules } = await supabase
     .from('recurring_tasks')
     .select('id, title, bucket, task_type, description, recurrence_day, frequency, starts_on, ends_on')
@@ -46,22 +53,20 @@ export default async function TasksPage() {
     const { data: ex } = await supabase
       .from('recurring_exceptions')
       .select('recurring_task_id, occurrence_date, completed_date, skipped_date, moved_to_date, title, description, task_type')
-      .gte('occurrence_date', windowStart)
+      .gte('occurrence_date', carryStart)
       .lte('occurrence_date', windowEnd)
     exceptions = (ex ?? []) as RecurringException[]
   }
 
-  const recurring = expandRules(
+  const recurring = expandRulesWithCarry(
     (rules ?? []) as RecurringRule[],
     exceptions,
+    carryStart,
     windowStart,
     windowEnd,
   )
 
   // ── One-off tasks: in-window, plus overdue (up to 60 days back, unresolved).
-  const pastStart = new Date(today)
-  pastStart.setDate(today.getDate() - 60)
-
   const { data: oneOff } = await supabase
     .from('tasks')
     .select('id, title, bucket, task_type, category, description, due_date, recurring_task_id, completed_date, skipped_date')

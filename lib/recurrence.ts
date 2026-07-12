@@ -116,3 +116,44 @@ export function expandRules(
   }
   return out
 }
+
+// Expand rules for the display window [windowStart, windowEnd], PLUS carry
+// forward missed recurring occurrences the same way one-off tasks carry: a
+// recurring task you didn't complete keeps showing as overdue until you resolve
+// it, instead of silently vanishing once its date passes.
+//
+// Expansion runs from `carryStart` (e.g. 60 days back) so pre-window occurrences
+// are visible. For each rule we surface at most ONE overdue occurrence — the
+// most recent still-open one before the window — so a daily rule can't flood the
+// list with weeks of misses (and legacy pre-migration completions, which live on
+// old task rows rather than exceptions, stay collapsed away).
+//
+// Retired series (ends_on before the window) are never carried — retiring a
+// recurring task means "stop nagging me", not "resurface every past miss".
+export function expandRulesWithCarry(
+  rules: RecurringRule[],
+  exceptions: RecurringException[],
+  carryStart: string,
+  windowStart: string,
+  windowEnd: string,
+): ExpandedOccurrence[] {
+  const all = expandRules(rules, exceptions, carryStart, windowEnd)
+
+  const inWindow = all.filter(o => o.due_date >= windowStart)
+
+  const retired = new Set(
+    rules.filter(r => r.ends_on && r.ends_on < windowStart).map(r => r.id),
+  )
+
+  // Most-recent still-open occurrence per rule, strictly before the window.
+  const carried = new Map<string, ExpandedOccurrence>()
+  for (const o of all) {
+    if (o.due_date >= windowStart) continue
+    if (o.completed_date || o.skipped_date) continue
+    if (retired.has(o.recurring_task_id)) continue
+    const prev = carried.get(o.recurring_task_id)
+    if (!prev || o.due_date > prev.due_date) carried.set(o.recurring_task_id, o)
+  }
+
+  return [...inWindow, ...carried.values()]
+}
