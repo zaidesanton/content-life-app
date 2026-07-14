@@ -3,6 +3,7 @@ import TasksView from '@/components/TasksView'
 import { expandRulesWithCarry, toDateStr } from '@/lib/recurrence'
 import type { RecurringRule, RecurringException } from '@/lib/recurrence'
 import type { Draft } from '@/components/DraftsPanel'
+import type { BotTask } from '@/components/BotTasksPanel'
 
 export const revalidate = 0
 
@@ -91,7 +92,17 @@ export default async function TasksPage() {
     .select('id, title, content, source_url, status, created_at')
     .order('created_at', { ascending: false })
 
+  // ── Bot's shared task board (degrades to empty pre-migration 0011).
+  const { data: botTasks } = await supabase
+    .from('bot_tasks')
+    .select('id, title, description, status, scheduled_for, cadence, next_run, last_run, created_by, result, created_at')
+    .order('created_at', { ascending: false })
+
   return (
-    <TasksView tasks={allTasks as Task[]} drafts={(drafts ?? []) as Draft[]} />
+    <TasksView
+      tasks={allTasks as Task[]}
+      drafts={(drafts ?? []) as Draft[]}
+      botTasks={(botTasks ?? []) as BotTask[]}
+    />
   )
 }

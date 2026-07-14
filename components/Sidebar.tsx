@@ -1,6 +1,6 @@
 'use client'
 
-export type Section = 'tasks' | 'drafts'
+export type Section = 'tasks' | 'bot' | 'drafts'
 
 const ITEMS: { key: Section; label: string; icon: React.ReactNode }[] = [
   {
@@ -10,6 +10,18 @@ const ITEMS: { key: Section; label: string; icon: React.ReactNode }[] = [
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]">
         <path d="M9 6h11M9 12h11M9 18h11" />
         <path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2" />
+      </svg>
+    ),
+  },
+  {
+    key: 'bot',
+    label: "Bot's tasks",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]">
+        <rect x="4" y="8" width="16" height="11" rx="2" />
+        <path d="M12 8V4M9 4h6" />
+        <circle cx="9" cy="13" r="1" fill="currentColor" stroke="none" />
+        <circle cx="15" cy="13" r="1" fill="currentColor" stroke="none" />
       </svg>
     ),
   },

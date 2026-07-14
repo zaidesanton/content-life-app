@@ -6,6 +6,8 @@ import { createTask, toggleTask, deleteTask, deleteRecurringTask, updateTaskType
 import PageTabs from '@/components/PageTabs'
 import DraftsPanel from '@/components/DraftsPanel'
 import type { Draft } from '@/components/DraftsPanel'
+import BotTasksPanel from '@/components/BotTasksPanel'
+import type { BotTask } from '@/components/BotTasksPanel'
 import Sidebar from '@/components/Sidebar'
 import type { Section } from '@/components/Sidebar'
 
@@ -650,7 +652,7 @@ function Bucket({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function TasksView({ tasks, drafts }: { tasks: Task[]; drafts: Draft[] }) {
+export default function TasksView({ tasks, drafts, botTasks }: { tasks: Task[]; drafts: Draft[]; botTasks: BotTask[] }) {
   const [view, setView] = useState<View>('today')
   const [section, setSection] = useState<Section>('tasks')
   // Start collapsed (safe for SSR/hydration), then expand on desktop after mount.
@@ -831,6 +833,8 @@ export default function TasksView({ tasks, drafts }: { tasks: Task[]; drafts: Dr
     startTransition(() => createTask(fd))
   }
 
+  const sectionTitle = section === 'bot' ? "Bot's tasks" : section === 'drafts' ? 'LinkedIn drafts' : ''
+
   const pageTabs = (
     <PageTabs
       tabs={[
@@ -871,23 +875,27 @@ export default function TasksView({ tasks, drafts }: { tasks: Task[]; drafts: Dr
         {menuButton}
         {section === 'tasks'
           ? pageTabs
-          : <span className="ml-1 text-[13px] font-medium text-white">LinkedIn drafts</span>}
+          : <span className="ml-1 text-[13px] font-medium text-white">{sectionTitle}</span>}
       </div>
-      {/* Desktop: sticky header — tabs (tasks) or title (drafts) */}
+      {/* Desktop: sticky header — tabs (tasks) or section title */}
       <div className="hidden md:block sticky top-0 z-10 border-b border-[#141414] bg-[#0a0a0a]">
         <div className="max-w-xl mx-auto px-6 md:px-8">
           {section === 'tasks'
             ? pageTabs
-            : <div className="px-4 py-3 text-[13px] font-medium text-white">LinkedIn drafts</div>}
+            : <div className="px-4 py-3 text-[13px] font-medium text-white">{sectionTitle}</div>}
         </div>
       </div>
 
       <div className="px-6 md:px-8 pt-4 pb-6 w-full max-w-xl md:mx-auto">
         <p suppressHydrationWarning className="text-[12px] text-[#aaa] mb-5">
-          {section === 'drafts' ? 'LinkedIn drafts' : viewSubtitle(view)}
+          {section === 'bot'
+            ? "What Bot's working on — its tasks and schedule"
+            : section === 'drafts' ? 'LinkedIn drafts' : viewSubtitle(view)}
         </p>
 
-        {section === 'drafts' ? (
+        {section === 'bot' ? (
+          <BotTasksPanel botTasks={botTasks} />
+        ) : section === 'drafts' ? (
           <DraftsPanel drafts={drafts} />
         ) : (
         <div className="relative">
