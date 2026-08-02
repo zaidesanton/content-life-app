@@ -479,7 +479,7 @@ function TaskRow({
               type="date"
               defaultValue={task.due_date}
               onChange={e => { if (e.target.value) onDateChange(task, e.target.value) }}
-              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              className="absolute inset-0 opacity-0 pointer-events-none w-full h-full"
               tabIndex={-1}
             />
           </div>
@@ -497,7 +497,7 @@ function TaskRow({
               type="date"
               defaultValue={task.due_date}
               onChange={e => { if (e.target.value) onDateChange(task, e.target.value) }}
-              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              className="absolute inset-0 opacity-0 pointer-events-none w-full h-full"
               tabIndex={-1}
             />
           </div>
@@ -513,7 +513,7 @@ function TaskRow({
             type="date"
             defaultValue={task.due_date}
             onChange={e => { if (e.target.value) onDateChange(task, e.target.value) }}
-            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+            className="absolute inset-0 opacity-0 pointer-events-none w-full h-full"
             tabIndex={-1}
           />
         </div>
