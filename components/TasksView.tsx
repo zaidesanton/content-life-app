@@ -534,7 +534,7 @@ function TaskRow({
       <button
         onClick={() => onSkip(task)}
         className={`transition-colors shrink-0 px-1 ${
-          skipped ? 'text-[#a06a6a] hover:text-[#c98a8a]' : 'text-[#333] hover:text-[#888] opacity-0 group-hover:opacity-100'
+          skipped ? 'text-[#a06a6a] hover:text-[#c98a8a]' : 'text-[#333] hover:text-[#888] opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100'
         }`}
         title={skipped ? "Undo — didn't skip after all" : "Won't do (but was planned)"}
       >
