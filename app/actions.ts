@@ -73,9 +73,39 @@ export async function deleteTask(id: string) {
 
 export async function deleteRecurringTask(id: string) {
   const supabase = await createSupabaseServerClient()
-  // Detach any leftover placeholder instance rows so the FK doesn't block the
-  // delete, then remove the rule. Its exceptions go via ON DELETE CASCADE.
-  await supabase.from('tasks').update({ recurring_task_id: null }).eq('recurring_task_id', id)
+  const today = toDateStr(new Date())
+
+  // Read exceptions so we can copy completed/skipped status onto placeholder rows.
+  // (Completion was tracked in recurring_exceptions, not on the task row itself.)
+  const { data: exceptions } = await supabase
+    .from('recurring_exceptions')
+    .select('occurrence_date, completed_date, skipped_date')
+    .eq('recurring_task_id', id)
+  const excMap = new Map((exceptions ?? []).map(e => [e.occurrence_date, e]))
+
+  // Read placeholder task rows.
+  const { data: placeholders } = await supabase
+    .from('tasks')
+    .select('id, due_date, completed_date, skipped_date')
+    .eq('recurring_task_id', id)
+
+  // Detach each placeholder with the correct resolution status.
+  for (const task of (placeholders ?? [])) {
+    const exc = excMap.get(task.due_date)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const patch: Record<string, any> = { recurring_task_id: null }
+    if (exc?.completed_date) {
+      patch.completed_date = exc.completed_date
+    } else if (exc?.skipped_date) {
+      patch.skipped_date = exc.skipped_date
+    } else if (!task.completed_date && !task.skipped_date) {
+      // No exception and not already resolved → orphaned occurrence, mark skipped.
+      patch.skipped_date = today
+    }
+    await supabase.from('tasks').update(patch).eq('id', task.id)
+  }
+
+  // Delete the rule; its exceptions cascade.
   await supabase.from('recurring_tasks').delete().eq('id', id)
   revalidatePath('/')
 }
