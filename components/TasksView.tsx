@@ -465,9 +465,9 @@ function TaskRow({
 
       {view === 'today' ? (
         isOverdue ? (
-          // Overdue in Today view: show its real (past) date. label routes taps to input.
-          <label className="relative shrink-0 cursor-pointer" title="Overdue — change day">
-            <span className="text-[11px] tabular-nums text-[#c08a5a]">
+          // Overdue: show real date. Input overlay (opacity near-zero) is tappable on iOS.
+          <div className="relative shrink-0 cursor-pointer" title="Overdue — change day">
+            <span className="text-[11px] tabular-nums text-[#c08a5a] pointer-events-none">
               {fullDateLabel}
             </span>
             <input
@@ -475,14 +475,15 @@ function TaskRow({
               type="date"
               defaultValue={task.due_date}
               onChange={e => { if (e.target.value) onDateChange(task, e.target.value) }}
-              className="sr-only"
+              className="absolute inset-0 w-full h-full cursor-pointer"
+              style={{ opacity: 0.001 }}
             />
-          </label>
+          </div>
         ) : (
-          // On-time: calendar icon. label routes taps to input.
-          <label className="relative shrink-0 cursor-pointer" title="Change day">
+          // On-time: calendar icon. Input overlay is tappable on iOS.
+          <div className="relative shrink-0 cursor-pointer" title="Change day">
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"
-              className={`transition-colors ${done ? 'text-[#555]' : 'text-[#777]'}`}>
+              className={`transition-colors pointer-events-none ${done ? 'text-[#555]' : 'text-[#777]'}`}>
               <rect x="1.5" y="2.5" width="11" height="10" rx="1.5"/>
               <path d="M1.5 5.5h11M4.5 1v2.5M9.5 1v2.5"/>
             </svg>
@@ -491,13 +492,14 @@ function TaskRow({
               type="date"
               defaultValue={task.due_date}
               onChange={e => { if (e.target.value) onDateChange(task, e.target.value) }}
-              className="sr-only"
+              className="absolute inset-0 w-full h-full cursor-pointer"
+              style={{ opacity: 0.001 }}
             />
-          </label>
+          </div>
         )
       ) : dateLabel && (
-        <label className="relative shrink-0 cursor-pointer">
-          <span className={`text-[11px] tabular-nums ${done ? 'text-[#555]' : 'text-[#999]'}`}>
+        <div className="relative shrink-0 cursor-pointer">
+          <span className={`text-[11px] tabular-nums pointer-events-none ${done ? 'text-[#555]' : 'text-[#999]'}`}>
             {dateLabel}
           </span>
           <input
@@ -505,9 +507,10 @@ function TaskRow({
             type="date"
             defaultValue={task.due_date}
             onChange={e => { if (e.target.value) onDateChange(task, e.target.value) }}
-            className="sr-only"
+            className="absolute inset-0 w-full h-full cursor-pointer"
+            style={{ opacity: 0.001 }}
           />
-        </label>
+        </div>
       )}
 
       <TypePicker current={task.task_type} onChange={type => onTypeChange(task, type)} />
